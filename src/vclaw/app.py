@@ -8,6 +8,8 @@ import signal
 import structlog
 import uvicorn
 
+from vclaw.agents.builtin.document_processing import DocumentProcessingAgent
+from vclaw.agents.builtin.image_processing import ImageProcessingAgent
 from vclaw.agents.builtin.public_service import PublicServiceAgent
 from vclaw.agents.builtin.task_management import TaskManagementAgent
 from vclaw.agents.registry import AgentRegistry
@@ -121,7 +123,12 @@ class VclawPlatform:
     async def _register_builtin_agents(self) -> None:
         """Register the built-in agents."""
         assert self.agent_registry is not None
-        builtins = [TaskManagementAgent(), PublicServiceAgent()]
+        builtins = [
+            TaskManagementAgent(),
+            PublicServiceAgent(),
+            DocumentProcessingAgent(),
+            ImageProcessingAgent(),
+        ]
         for agent in builtins:
             await self.agent_registry.register(agent)
 
