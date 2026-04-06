@@ -2,6 +2,7 @@
 
 import type { EventEntry } from "@/lib/types";
 import { shortEventType, relativeTime } from "@/lib/utils";
+import { Circle } from "lucide-react";
 import styles from "./event-stream.module.css";
 
 interface EventStreamProps {
@@ -18,6 +19,8 @@ const TYPE_COLORS: Record<string, string> = {
   "agent.failed": "red",
   "workflow.completed": "green",
   "workflow.failed": "red",
+  "workflow.started": "blue",
+  "tool.called": "cyan",
 };
 
 function getColor(type: string): string {
@@ -29,9 +32,9 @@ export function EventStream({ events }: EventStreamProps) {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h2 className={styles.title}>Event Stream</h2>
+        <h3 className={styles.title}>Event Stream</h3>
         <span className={styles.live}>
-          <span className={styles.liveDot} />
+          <Circle size={6} fill="var(--green)" stroke="none" className="animate-pulse" />
           Live
         </span>
       </div>

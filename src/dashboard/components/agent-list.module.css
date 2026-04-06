@@ -1,7 +1,7 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .header {
@@ -12,29 +12,29 @@
 }
 
 .title {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
-  letter-spacing: -0.01em;
 }
 
 .count {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-tertiary);
+  font-family: var(--font-mono);
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 16px;
-  transition: border-color var(--transition);
+  padding: 12px;
+  transition: border-color var(--transition-fast);
 }
 
 .card:hover {
@@ -45,132 +45,112 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .nameRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .status {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .status[data-status="online"] {
   background: var(--green);
-  box-shadow: 0 0 6px rgba(70, 167, 88, 0.4);
+  box-shadow: 0 0 4px rgba(63, 207, 142, 0.4);
 }
 
 .status[data-status="busy"] {
   background: var(--warning);
-  box-shadow: 0 0 6px rgba(245, 166, 35, 0.4);
+  box-shadow: 0 0 4px rgba(245, 166, 35, 0.4);
 }
 
-.status[data-status="offline"] {
-  background: var(--text-tertiary);
-}
+.status[data-status="offline"] { background: var(--text-tertiary); }
 
 .status[data-status="degraded"] {
   background: var(--error);
-  box-shadow: 0 0 6px rgba(229, 72, 77, 0.4);
+  box-shadow: 0 0 4px rgba(229, 72, 77, 0.4);
 }
 
 .name {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
   font-family: var(--font-mono);
-  letter-spacing: -0.01em;
 }
 
 .version {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-tertiary);
   font-family: var(--font-mono);
 }
 
 .statusText {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
-  padding: 2px 8px;
+  padding: 1px 6px;
   border-radius: 999px;
 }
 
-.statusText[data-status="online"] {
-  color: var(--green);
-  background: var(--green-bg);
-}
-
-.statusText[data-status="busy"] {
-  color: var(--warning);
-  background: var(--warning-bg);
-}
-
-.statusText[data-status="offline"] {
-  color: var(--text-tertiary);
-  background: var(--accent-dim);
-}
-
-.statusText[data-status="degraded"] {
-  color: var(--error);
-  background: var(--error-bg);
-}
+.statusText[data-status="online"] { color: var(--green); background: var(--green-bg); }
+.statusText[data-status="busy"] { color: var(--warning); background: var(--warning-bg); }
+.statusText[data-status="offline"] { color: var(--text-tertiary); background: var(--accent-dim); }
+.statusText[data-status="degraded"] { color: var(--error); background: var(--error-bg); }
 
 .statsRow {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .stat {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .statLabel {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .statValue {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);
 }
 
-.statValue[data-error="true"] {
-  color: var(--error);
-}
+.statValue[data-error="true"] { color: var(--error); }
 
 .toolsRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: 3px;
+  margin-bottom: 6px;
 }
 
 .toolBadge {
-  font-size: 11px;
+  font-size: 10px;
   font-family: var(--font-mono);
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   background: var(--accent-dim);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 2px 7px;
+  border-radius: 3px;
+  padding: 1px 5px;
 }
 
 .lastActive {
-  font-size: 11px;
-  color: var(--text-tertiary);
+  font-size: 10px;
+  color: var(--text-quaternary);
 }

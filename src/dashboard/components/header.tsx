@@ -1,38 +1,55 @@
 "use client";
 
 import { formatUptime } from "@/lib/utils";
+import { Clock, Cpu, HardDrive, Wifi } from "lucide-react";
+import type { SystemStatus } from "@/lib/types";
 import styles from "./header.module.css";
 
-interface HeaderProps {
+interface StatusBarProps {
   uptimeSeconds: number;
-  environment?: string;
+  systemStatus: SystemStatus;
 }
 
-export function Header({ uptimeSeconds, environment = "production" }: HeaderProps) {
+export function StatusBar({ uptimeSeconds, systemStatus }: StatusBarProps) {
   return (
-    <header className={styles.header}>
-      <div className={styles.left}>
-        <div className={styles.logo}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-            <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-            <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-          </svg>
-          <span className={styles.title}>vclaw</span>
-        </div>
-        <span className={styles.separator}>/</span>
-        <span className={styles.subtitle}>dashboard</span>
+    <div className={styles.bar}>
+      <div className={styles.barGroup}>
+        <Clock size={11} />
+        <span className={styles.barLabel}>Uptime</span>
+        <span className={styles.barValue}>{formatUptime(uptimeSeconds)}</span>
       </div>
-      <div className={styles.right}>
-        <div className={styles.badge} data-env={environment}>
-          <span className={styles.dot} />
-          {environment}
-        </div>
-        <div className={styles.uptime}>
-          <span className={styles.uptimeLabel}>Uptime</span>
-          <span className={styles.uptimeValue}>{formatUptime(uptimeSeconds)}</span>
-        </div>
+      <span className={styles.barDivider} />
+      <div className={styles.barGroup}>
+        <Cpu size={11} />
+        <span className={styles.barLabel}>CPU</span>
+        <span className={styles.barValue} data-warn={systemStatus.cpu > 70}>{systemStatus.cpu.toFixed(0)}%</span>
       </div>
-    </header>
+      <span className={styles.barDivider} />
+      <div className={styles.barGroup}>
+        <HardDrive size={11} />
+        <span className={styles.barLabel}>Memory</span>
+        <span className={styles.barValue} data-warn={systemStatus.memory > 80}>{systemStatus.memory.toFixed(0)}%</span>
+      </div>
+      <span className={styles.barDivider} />
+      <div className={styles.barGroup}>
+        <Wifi size={11} />
+        <span className={styles.barLabel}>Connections</span>
+        <span className={styles.barValue}>{systemStatus.activeConnections}</span>
+      </div>
+      <div className={styles.barRight}>
+        <ServiceDot label="Redis" ok={systemStatus.redisConnected} />
+        <ServiceDot label="Kafka" ok={systemStatus.kafkaConnected} />
+        <ServiceDot label="Postgres" ok={systemStatus.postgresConnected} />
+      </div>
+    </div>
+  );
+}
+
+function ServiceDot({ label, ok }: { label: string; ok: boolean }) {
+  return (
+    <div className={styles.serviceDot}>
+      <span className={styles.dot} data-ok={ok} />
+      <span className={styles.serviceLabel}>{label}</span>
+    </div>
   );
 }

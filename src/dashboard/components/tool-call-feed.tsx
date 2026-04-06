@@ -19,17 +19,11 @@ export function ToolCallFeed({ calls }: ToolCallFeedProps) {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h2 className={styles.title}>Tool Calls</h2>
+        <h3 className={styles.title}>Tool Calls</h3>
         <div className={styles.legend}>
-          <span className={styles.legendItem} data-status="running">
-            <span className={styles.legendDot} /> Running
-          </span>
-          <span className={styles.legendItem} data-status="success">
-            <span className={styles.legendDot} /> Success
-          </span>
-          <span className={styles.legendItem} data-status="error">
-            <span className={styles.legendDot} /> Error
-          </span>
+          <span className={styles.legendItem} data-status="running"><span className={styles.legendDot} /> Running</span>
+          <span className={styles.legendItem} data-status="success"><span className={styles.legendDot} /> OK</span>
+          <span className={styles.legendItem} data-status="error"><span className={styles.legendDot} /> Err</span>
         </div>
       </div>
       <div className={styles.feed}>
