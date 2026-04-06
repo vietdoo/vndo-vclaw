@@ -11,10 +11,12 @@ import uvicorn
 from vclaw.agents.builtin.public_service import PublicServiceAgent
 from vclaw.agents.builtin.task_management import TaskManagementAgent
 from vclaw.agents.registry import AgentRegistry
+from vclaw.api.monitoring import create_monitoring_routes, set_platform
 from vclaw.api.response_handler import ResponseHandler
 from vclaw.api.webhook import create_app, set_gateway, set_health_data
 from vclaw.application.orchestrator import Orchestrator
 from vclaw.config import EventBusBackend, VclawSettings
+from vclaw.domain.events import CloudEvent
 from vclaw.infrastructure.event_bus.base import EventBus
 from vclaw.infrastructure.event_bus.memory import InMemoryEventBus
 from vclaw.infrastructure.llm.router import LLMRouter
@@ -40,6 +42,7 @@ class VclawPlatform:
         self.state_store: StateStore | None = None
         self.telegram_gateway: TelegramGateway | None = None
         self.response_handler: ResponseHandler | None = None
+        self.postgres_store: object | None = None
         self._shutdown_event = asyncio.Event()
 
     async def start(self) -> None:
@@ -58,14 +61,18 @@ class VclawPlatform:
             "platform_starting",
             environment=self.settings.environment.value,
             event_bus_backend=self.settings.event_bus_backend.value,
+            persistence_backend=self.settings.persistence_backend,
         )
+
+        self.state_store = await self._create_state_store()
 
         self.event_bus = self._create_event_bus()
         await self.event_bus.start()
 
-        self.llm_router = LLMRouter.from_configs(self.settings.get_llm_provider_configs())
+        if self.settings.enable_event_logging and self.postgres_store:
+            await self._setup_event_logging()
 
-        self.state_store = InMemoryStateStore()
+        self.llm_router = LLMRouter.from_configs(self.settings.get_llm_provider_configs())
 
         self.agent_registry = AgentRegistry(
             event_bus=self.event_bus,
@@ -104,8 +111,10 @@ class VclawPlatform:
             {
                 "agents": list(self.agent_registry.agents.keys()),
                 "event_bus": self.settings.event_bus_backend.value,
+                "persistence": self.settings.persistence_backend,
             }
         )
+        set_platform(self)
 
         await self.telegram_gateway.setup_webhook()
 
@@ -129,15 +138,83 @@ class VclawPlatform:
             from vclaw.infrastructure.event_bus.redis_streams import RedisStreamsEventBus
 
             return RedisStreamsEventBus(redis_url=self.settings.redis.url)
-        if backend == EventBusBackend.NATS:
-            raise NotImplementedError("NATS event bus not yet implemented")
+        if backend == EventBusBackend.KAFKA:
+            from vclaw.infrastructure.event_bus.kafka_bus import KafkaEventBus
+
+            cfg = self.settings.kafka
+            return KafkaEventBus(
+                bootstrap_servers=cfg.bootstrap_servers,
+                consumer_group=cfg.consumer_group,
+                topic_prefix=cfg.topic_prefix,
+                max_concurrent=cfg.max_concurrent,
+                auto_offset_reset=cfg.auto_offset_reset,
+            )
         return InMemoryEventBus(max_concurrent=self.settings.max_concurrent_agents * 10)
+
+    async def _create_state_store(self) -> StateStore:
+        if self.settings.persistence_backend == "postgres":
+            from vclaw.infrastructure.persistence.postgres_store import PostgresStateStore
+
+            pg = PostgresStateStore(
+                dsn=self.settings.postgres.dsn,
+                min_pool_size=self.settings.postgres.min_pool_size,
+                max_pool_size=self.settings.postgres.max_pool_size,
+            )
+            try:
+                await pg.initialize()
+                self.postgres_store = pg
+                logger.info("postgres_state_store_ready")
+                return pg
+            except Exception:
+                logger.exception("postgres_init_failed_falling_back_to_memory")
+                return InMemoryStateStore()
+        return InMemoryStateStore()
+
+    async def _setup_event_logging(self) -> None:
+        """Subscribe a bus-wide listener that persists events to PostgreSQL."""
+        from vclaw.domain.events import EventTypes
+
+        pg = self.postgres_store
+        assert self.event_bus is not None
+
+        event_types_to_log = [
+            EventTypes.MESSAGE_RECEIVED,
+            EventTypes.MESSAGE_NORMALIZED,
+            EventTypes.INTENT_CLASSIFIED,
+            EventTypes.TASK_DECOMPOSED,
+            EventTypes.AGENT_DISPATCHED,
+            EventTypes.AGENT_COMPLETED,
+            EventTypes.AGENT_FAILED,
+            EventTypes.WORKFLOW_COMPLETED,
+            EventTypes.WORKFLOW_FAILED,
+            EventTypes.DLQ_MESSAGE,
+        ]
+
+        async def _log_event(event: CloudEvent) -> None:
+            try:
+                level = "error" if "failed" in event.type or "dlq" in event.type else "info"
+                await pg.log_event(  # type: ignore[union-attr]
+                    event_type=event.type,
+                    event_id=event.id,
+                    source=event.source,
+                    correlation_id=event.correlation_id,
+                    tenant_id=event.tenant_id,
+                    data=event.data,
+                    level=level,
+                )
+            except Exception:
+                logger.debug("event_log_write_failed", event_type=event.type)
+
+        for et in event_types_to_log:
+            await self.event_bus.subscribe(et, _log_event)
+
+        logger.info("event_logging_enabled", event_types=len(event_types_to_log))
 
     async def run(self) -> None:
         """Start the HTTP server and run until shutdown signal."""
         await self.start()
 
-        app = create_app()
+        app = create_app(extra_routes=create_monitoring_routes())
         config = uvicorn.Config(
             app,
             host=self.settings.host,
@@ -171,6 +248,8 @@ class VclawPlatform:
             await self.llm_router.close()
         if self.telegram_gateway:
             await self.telegram_gateway.close()
+        if self.postgres_store and hasattr(self.postgres_store, "close"):
+            await self.postgres_store.close()  # type: ignore[union-attr]
 
         logger.info("platform_stopped")
 

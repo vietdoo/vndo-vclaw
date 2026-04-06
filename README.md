@@ -21,12 +21,13 @@ Production-ready, scalable AI agent platform that routes Telegram commands to sp
 │  • Message normalization                                         │
 │  • Idempotency key extraction                                    │
 │  • Health / readiness probes                                     │
+│  • Monitoring & stats REST API (/api/v1/*)                       │
 └──────────────────────────┬───────────────────────────────────────┘
                            │ CloudEvent: message.normalized
                            ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │                    EVENT BUS (Pub/Sub)                            │
-│  Backends: InMemory │ Redis Streams │ NATS (planned)             │
+│  Backends: InMemory │ Redis Streams │ Apache Kafka               │
 │  • At-least-once delivery                                        │
 │  • Dead-letter queue                                             │
 │  • Backpressure via semaphores                                   │
@@ -66,6 +67,14 @@ Production-ready, scalable AI agent platform that routes Telegram commands to sp
 │  • Health monitoring per provider                                │
 │  • Structured tool-calling schema enforcement                    │
 └──────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                   PERSISTENCE                                     │
+│  • InMemory (dev/test)                                           │
+│  • PostgreSQL (production): workflow state, idempotency,          │
+│    system event log for audit/analytics                           │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ### Data Flow
@@ -75,12 +84,13 @@ Production-ready, scalable AI agent platform that routes Telegram commands to sp
 3. **Execution:** Subtasks dispatched to agents (parallel where possible, sequential for dependencies)
 4. **Aggregation:** Results collected → composed into response → emit `workflow.completed`
 5. **Delivery:** Response handler subscribes → sends Telegram reply
+6. **Logging:** All events persisted to PostgreSQL for audit trail and real-time dashboard
 
 ### State Management & Idempotency
 
 - **Workflow State Machine:** `PENDING → ROUTING → EXECUTING → AGGREGATING → COMPLETED/FAILED`
 - **Idempotency:** Each message gets a deterministic key (`source:chat_id:message_id`); duplicates are rejected at the orchestrator layer
-- **State Store:** Abstract interface with in-memory (dev) and Redis (production) implementations
+- **State Store:** Abstract interface with in-memory (dev) and PostgreSQL (production) implementations
 
 ### Multi-Tenant Context Propagation
 
@@ -95,6 +105,10 @@ Production-ready, scalable AI agent platform that routes Telegram commands to sp
 ```
 vclaw/
 ├── pyproject.toml                    # Dependencies, entry points, tool config
+├── Dockerfile                        # Multi-stage production container
+├── docker-compose.yml                # Full stack: vclaw + Kafka + PostgreSQL + Redis
+├── .dockerignore
+├── .env.example                      # Environment variable template
 ├── README.md
 ├── src/
 │   └── vclaw/
@@ -113,13 +127,15 @@ vclaw/
 │       │   ├── event_bus/
 │       │   │   ├── base.py          # Abstract EventBus interface
 │       │   │   ├── memory.py        # In-memory (dev/test)
-│       │   │   └── redis_streams.py # Redis Streams (production)
+│       │   │   ├── redis_streams.py # Redis Streams (production)
+│       │   │   └── kafka_bus.py     # Apache Kafka (production, recommended)
 │       │   ├── llm/
 │       │   │   ├── base.py          # Abstract LLMProvider
 │       │   │   ├── openai_compat.py # OpenAI-compatible provider
 │       │   │   └── router.py        # Multi-provider fallback router
 │       │   ├── persistence/
-│       │   │   └── state_store.py   # Workflow state + idempotency
+│       │   │   ├── state_store.py   # Abstract + InMemory state store
+│       │   │   └── postgres_store.py # PostgreSQL: state + event log
 │       │   ├── observability/
 │       │   │   ├── logging.py       # structlog setup
 │       │   │   └── tracing.py       # OpenTelemetry setup
@@ -136,9 +152,10 @@ vclaw/
 │       │
 │       └── api/                      # API Layer
 │           ├── webhook.py           # Starlette HTTP endpoints
-│           └── response_handler.py  # Event → Telegram reply bridge
+│           ├── response_handler.py  # Event → Telegram reply bridge
+│           └── monitoring.py        # REST API for dashboard/stats
 │
-├── tests/                            # Test suite
+├── tests/                            # Test suite (59 tests)
 ├── plugins/                          # Drop-in agent plugins
 └── examples/
     └── plugin_agent/                # Example custom agent
@@ -146,52 +163,242 @@ vclaw/
 
 ---
 
-## 3. Core Implementation
+## 3. Docker Deployment
 
-See the source code in `src/vclaw/` for complete, type-annotated implementations of:
+### Quick Start with Docker Compose
 
-- **`EventBus`** (`infrastructure/event_bus/base.py`): Abstract async pub/sub with DLQ support
-- **`InMemoryEventBus`** (`infrastructure/event_bus/memory.py`): Backpressure-controlled in-memory bus
-- **`RedisStreamsEventBus`** (`infrastructure/event_bus/redis_streams.py`): Production bus with consumer groups
-- **`AgentBase`** (`agents/base.py`): Execution contract with timeout, tracing, concurrency control
-- **`AgentRegistry`** (`agents/registry.py`): Plugin discovery via entry points + directory scanning
-- **`Orchestrator`** (`application/orchestrator.py`): Intent classification → decomposition → routing → aggregation
-- **`LLMRouter`** (`infrastructure/llm/router.py`): Provider fallback chain with health tracking
+```bash
+# 1. Copy and fill in environment variables
+cp .env.example .env
+# Edit .env with your Telegram bot token and LLM API keys
+
+# 2. Start the full stack
+docker compose up -d
+
+# 3. Start with Kafka UI for debugging (dev profile)
+docker compose --profile dev up -d
+
+# 4. Check status
+docker compose ps
+docker compose logs -f vclaw
+```
+
+### Services
+
+| Service | Port | Description |
+|---------|------|-------------|
+| `vclaw` | 8080 | Main application |
+| `postgres` | 5432 | PostgreSQL 16 (state + event log) |
+| `kafka` | 9092 | Apache Kafka (KRaft mode, no Zookeeper) |
+| `redis` | 6379 | Redis 7 (caching) |
+| `kafka-ui` | 8090 | Kafka UI (dev profile only) |
+
+### Health Checks
+
+All infrastructure services have Docker healthchecks. The `vclaw` container waits for all dependencies to be healthy before starting.
+
+```bash
+# Check application health
+curl http://localhost:8080/health
+curl http://localhost:8080/ready
+```
+
+### Resource Limits
+
+| Service | Memory Limit | CPU Limit |
+|---------|-------------|-----------|
+| vclaw | 512M | 1.0 |
+| postgres | 256M | - |
+| kafka | 1G | - |
+| redis | 128M | - |
 
 ---
 
-## 4. Telegram Integration Pipeline
+## 4. Monitoring & Stats API
 
-The pipeline handles:
+REST API endpoints designed for building a real-time dashboard frontend.
 
-1. **Webhook Setup:** Auto-registers webhook URL with Telegram on startup
-2. **Signature Verification:** HMAC-SHA256 validation of `X-Telegram-Bot-Api-Secret-Token`
-3. **Message Normalization:** Raw Telegram Update → `IncomingMessage` with unified schema
-4. **Event Emission:** `MESSAGE_RECEIVED` → `MESSAGE_NORMALIZED` events on the bus
-5. **Rate Limiting:** Per-chat sliding-window limiter (configurable via `TELEGRAM_RATE_LIMIT_*`)
-6. **Response Delivery:** `ResponseHandler` subscribes to workflow events → sends Telegram messages
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/stats/system` | System overview: uptime, component health, agent status |
+| `GET` | `/api/v1/stats/workflows` | Workflow execution statistics |
+| `GET` | `/api/v1/stats/events/summary` | Event type counts (last 24h) |
+| `GET` | `/api/v1/events` | Query system event log (paginated, filterable) |
+| `GET` | `/api/v1/workflows/active` | List currently active workflows |
+| `GET` | `/api/v1/workflows/{id}` | Workflow detail |
+| `GET` | `/api/v1/agents/health` | Agent health + manifest info |
+
+### Query Parameters
+
+**`/api/v1/events`:**
+- `event_type` — filter by event type (e.g., `vclaw.workflow.completed`)
+- `correlation_id` — filter by workflow correlation ID
+- `tenant_id` — filter by tenant
+- `level` — filter by level (`info`, `error`)
+- `since` / `until` — ISO datetime range
+- `limit` (max 500) / `offset` — pagination
+
+**`/api/v1/stats/workflows`:**
+- `since` — ISO datetime or hours (e.g., `24` for last 24 hours)
+- `tenant_id` — filter by tenant
+
+### Example Responses
+
+```bash
+# System stats
+curl http://localhost:8080/api/v1/stats/system
+```
+
+```json
+{
+  "status": "healthy",
+  "uptime_seconds": 3621.4,
+  "service": "vclaw",
+  "timestamp": "2026-04-06T10:00:00+00:00",
+  "components": {
+    "event_bus": {"backend": "kafka", "status": "running"},
+    "state_store": {"backend": "postgres", "status": "running"},
+    "agents": {"count": 2, "names": ["task_management", "public_service"]},
+    "llm_providers": {"openai": true}
+  }
+}
+```
 
 ---
 
-## 5. Example Agents
+## 5. Event Bus: Kafka
 
-### TaskManagementAgent
+The platform uses Apache Kafka as the production event bus (replacing the earlier NATS placeholder).
 
-Kanban task board with MCP-compatible tool definitions:
-- `create_task`, `update_task`, `move_task`, `list_tasks`, `get_task`, `delete_task`
-- LLM tool-calling for natural language → structured operation
-- Fallback parsing when LLM is unavailable
+### Features
 
-### PublicServiceAgent
+- **Topic-per-event-type:** Independent scaling per event stream
+- **Consumer groups:** Horizontal scaling across multiple workers
+- **Idempotent producer:** Exactly-once semantics with `enable_idempotence=True`
+- **Gzip compression:** Reduced network bandwidth
+- **Dead-letter queue:** Failed events routed to `vclaw.dlq` topic
+- **Configurable partitions:** Default 3 partitions for parallelism
 
-Vietnamese government service directory:
-- `lookup_service`, `list_services`, `submit_application`, `check_status`
-- Pre-loaded service data (CCCD, Passport, Business License, Land Certificate)
-- Bilingual responses (Vietnamese/English)
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VCLAW_EVENT_BUS_BACKEND` | `memory` | Set to `kafka` for production |
+| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
+| `KAFKA_CONSUMER_GROUP` | `vclaw` | Consumer group ID |
+| `KAFKA_TOPIC_PREFIX` | `vclaw.` | Topic name prefix |
+| `KAFKA_AUTO_OFFSET_RESET` | `earliest` | Where to start consuming |
+| `KAFKA_MAX_CONCURRENT` | `50` | Max parallel message processing |
 
 ---
 
-## 6. Agent SDK Guide
+## 6. PostgreSQL Persistence
+
+### Schema
+
+- **`workflow_states`** — Durable workflow state with JSONB columns for flexible data
+- **`idempotency_keys`** — Deduplication tracking
+- **`system_event_log`** — Full audit trail of all platform events (indexed by type, correlation, tenant, time)
+
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VCLAW_PERSISTENCE_BACKEND` | `memory` | Set to `postgres` for production |
+| `POSTGRES_DSN` | `postgresql://vclaw:vclaw@localhost:5432/vclaw` | Connection string |
+| `POSTGRES_MIN_POOL_SIZE` | `5` | Minimum connection pool size |
+| `POSTGRES_MAX_POOL_SIZE` | `20` | Maximum connection pool size |
+| `VCLAW_ENABLE_EVENT_LOGGING` | `true` | Enable event → PostgreSQL logging |
+
+### Fault Tolerance
+
+- If PostgreSQL is unreachable at startup, the platform gracefully falls back to in-memory state store
+- Connection pooling via asyncpg for high throughput
+- Auto-creates schema on first connection
+
+---
+
+## 7. Fault Tolerance & Resilience
+
+### Load Handling
+
+- **Event bus backpressure:** Configurable semaphore limits parallel handler execution
+- **Per-agent concurrency:** Each agent's `max_concurrent` enforced via asyncio.Semaphore
+- **Kafka partitioning:** Events distributed across partitions for parallel consumption
+- **Connection pooling:** asyncpg pool (5-20 connections), httpx connection reuse
+
+### Error Recovery
+
+- **Retry policy:** Per-agent configurable retries with exponential backoff
+- **Dead-letter queue:** Failed events routed to DLQ (Kafka topic or in-memory)
+- **Circuit breaker:** LLM providers marked unhealthy on failure, skipped in routing
+- **Graceful degradation:** Platform runs without LLM (agents use fallback logic)
+- **Persistence fallback:** Postgres failure → automatic fallback to in-memory store
+
+### Observability
+
+- **Structured logging:** structlog with JSON output, tenant/workflow context propagation
+- **Distributed tracing:** OpenTelemetry spans across orchestrator → agents → LLM calls
+- **Health probes:** `/health` and `/ready` endpoints for Kubernetes/Docker healthchecks
+- **Event audit log:** All platform events persisted to PostgreSQL `system_event_log`
+- **Dashboard API:** 7 REST endpoints for real-time monitoring
+
+---
+
+## 8. Quick Start
+
+### Local Development
+
+```bash
+# Install
+pip install -e ".[dev]"
+
+# Configure (minimal)
+export TELEGRAM_BOT_TOKEN="your-bot-token"
+export VCLAW_LLM_PROVIDERS='[{"name":"openai","api_key":"sk-...","model":"gpt-4o-mini"}]'
+
+# Run (in-memory mode)
+python -m vclaw.app
+
+# Run tests
+pytest tests/ -v
+```
+
+### Production (Docker)
+
+```bash
+cp .env.example .env
+# Fill in TELEGRAM_BOT_TOKEN, VCLAW_LLM_PROVIDERS, etc.
+
+docker compose up -d
+# Application at http://localhost:8080
+# Dashboard API at http://localhost:8080/api/v1/stats/system
+```
+
+---
+
+## 9. Configuration Reference
+
+All settings via environment variables with `VCLAW_` prefix. See `src/vclaw/config.py` for the complete schema.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VCLAW_ENVIRONMENT` | `development` | Environment mode |
+| `VCLAW_EVENT_BUS_BACKEND` | `memory` | Event bus: `memory`, `redis`, `kafka` |
+| `VCLAW_PERSISTENCE_BACKEND` | `memory` | State store: `memory`, `postgres` |
+| `VCLAW_MAX_CONCURRENT_AGENTS` | `10` | Global agent concurrency limit |
+| `VCLAW_ENABLE_EVENT_LOGGING` | `true` | Log events to PostgreSQL |
+| `TELEGRAM_BOT_TOKEN` | - | Telegram bot API token |
+| `TELEGRAM_WEBHOOK_URL` | - | Public webhook URL |
+| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
+| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
+| `POSTGRES_DSN` | `postgresql://vclaw:vclaw@localhost:5432/vclaw` | PostgreSQL connection |
+
+---
+
+## 10. Agent SDK Guide
 
 ### Creating a New Agent
 
@@ -228,7 +435,6 @@ class MyAgent(AgentBase):
 
     async def execute(self, request: AgentRequest) -> AgentResponse:
         text = request.input_data.get("text", "")
-        # Your logic here
         return AgentResponse(
             workflow_id=request.workflow_id,
             subtask_id=request.subtask_id,
@@ -246,150 +452,3 @@ class MyAgent(AgentBase):
   my_agent = "my_package:MyAgent"
   ```
 - **Manual:** Call `await registry.register(MyAgent())`
-
-**Step 3:** Test locally:
-
-```python
-import asyncio
-from vclaw.domain.models import AgentRequest
-
-agent = MyAgent()
-asyncio.run(agent.setup())
-
-request = AgentRequest(
-    workflow_id="test", subtask_id="test",
-    agent_name="my_agent", input_data={"text": "hello"},
-)
-response = asyncio.run(agent.run(request))
-print(response.data)
-```
-
-### Manifest Schema
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | `str` | Yes | Unique agent identifier |
-| `version` | `str` | No | Semver version |
-| `description` | `str` | No | Human-readable description |
-| `capabilities` | `list[AgentCapability]` | No | Capability declarations for routing |
-| `tools` | `list[ToolDefinition]` | No | MCP-compatible tool schemas |
-| `input_schema` | `dict` | No | JSON Schema for input validation |
-| `output_schema` | `dict` | No | JSON Schema for output validation |
-| `max_concurrent` | `int` | No | Concurrency limit (default: 5) |
-| `timeout_seconds` | `float` | No | Execution timeout (default: 60) |
-| `retry_policy` | `RetryPolicy` | No | Retry configuration |
-
----
-
-## 7. End-to-End Flow Walkthrough
-
-**Input:** User sends `"Tạo task cho team backend"` in Telegram
-
-```
-1. INGESTION
-   Telegram → POST /webhook/telegram
-   → verify_webhook_signature()
-   → normalize_update() → IncomingMessage{text="Tạo task cho team backend", chat_id="123"}
-   → rate_limiter.allow("123") → True
-   → EventBus.publish(CloudEvent{type="vclaw.message.normalized", data=message})
-
-2. ORCHESTRATOR PICKUP
-   → Orchestrator._handle_message(event)
-   → state_store.check_idempotency("telegram:123:msg-id") → False (new message)
-   → WorkflowState created, status → ROUTING
-
-3. INTENT CLASSIFICATION
-   → LLM request with agent descriptions as context
-   → LLM responds: {"intent": "task_creation", "target_agent": "task_management",
-                     "parameters": {"team": "backend"}, "confidence": 0.95}
-   → EventBus.publish(CloudEvent{type="vclaw.intent.classified"})
-
-4. TASK DECOMPOSITION
-   → Single target agent identified → 1 SubTask
-   → SubTask{agent_name="task_management", input_data={text: "...", team: "backend"}}
-   → EventBus.publish(CloudEvent{type="vclaw.task.decomposed"})
-
-5. AGENT EXECUTION
-   → WorkflowState status → EXECUTING
-   → EventBus.publish(CloudEvent{type="vclaw.agent.dispatched"})
-   → TaskManagementAgent.run(AgentRequest{...})
-   → LLM tool-calling → create_task(title="Tạo task cho team backend", team="backend")
-   → TaskStore.create_task() → TASK-0001
-   → AgentResponse{success=True, data={response_text: "✅ Created TASK-0001: ..."}}
-   → EventBus.publish(CloudEvent{type="vclaw.agent.completed"})
-
-6. AGGREGATION
-   → WorkflowState status → AGGREGATING
-   → Single result → pass through
-   → WorkflowState status → COMPLETED, result = {success: True, data: {...}}
-   → EventBus.publish(CloudEvent{type="vclaw.workflow.completed"})
-
-7. RESPONSE DELIVERY
-   → ResponseHandler._on_completed(event)
-   → TelegramGateway.send_message("123", "✅ Created TASK-0001: Tạo task cho team backend")
-   → User sees response in Telegram
-```
-
-**Error boundaries:** Each stage has try/catch → on failure, workflow transitions to FAILED → error response sent to user.
-
----
-
-## 8. Scaling & Resilience Strategy
-
-### Horizontal Scaling
-
-- **Stateless orchestrator:** All state in external store (Redis/DB), any instance can process any message
-- **Event bus partitioning:** Redis Streams consumer groups distribute load across workers
-- **Agent isolation:** Each agent runs with its own concurrency semaphore; a slow agent doesn't block others
-
-### Concurrency Control
-
-- **Event bus:** Configurable `max_concurrent` semaphore limits parallel handler execution
-- **Agent runtime:** Per-agent `max_concurrent` from manifest, enforced via asyncio.Semaphore
-- **HTTP client:** Connection pooling via httpx.AsyncClient (reused per provider)
-
-### Failure Handling
-
-- **Retry policy:** Per-agent configurable retries with exponential backoff
-- **Dead-letter queue:** Failed events routed to DLQ stream for investigation
-- **Circuit breaker:** LLM providers marked unhealthy on failure, skipped in routing
-- **Fallback agents:** Built-in agents have keyword-based fallback when LLM is unavailable
-- **Graceful degradation:** Platform runs without LLM providers (agents use fallback logic)
-
-### Observability
-
-- **Structured logging:** structlog with JSON output, tenant/workflow context propagation
-- **Distributed tracing:** OpenTelemetry spans across orchestrator → agents → LLM calls
-- **Health probes:** `/health` and `/ready` endpoints for Kubernetes liveness/readiness
-
----
-
-## Quick Start
-
-```bash
-# Install
-pip install -e ".[dev]"
-
-# Configure (minimal)
-export TELEGRAM_BOT_TOKEN="your-bot-token"
-export VCLAW_LLM_PROVIDERS='[{"name":"openai","api_key":"sk-...","model":"gpt-4o-mini"}]'
-
-# Run
-python -m vclaw.app
-
-# Run tests
-pytest tests/ -v
-```
-
-## Configuration
-
-All settings via environment variables with `VCLAW_` prefix. See `src/vclaw/config.py` for the complete schema.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `VCLAW_ENVIRONMENT` | `development` | Environment mode |
-| `VCLAW_EVENT_BUS_BACKEND` | `memory` | Event bus: `memory`, `redis`, `nats` |
-| `VCLAW_MAX_CONCURRENT_AGENTS` | `10` | Global agent concurrency limit |
-| `TELEGRAM_BOT_TOKEN` | - | Telegram bot API token |
-| `TELEGRAM_WEBHOOK_URL` | - | Public webhook URL |
-| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |

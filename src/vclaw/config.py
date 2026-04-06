@@ -18,7 +18,12 @@ class Environment(StrEnum):
 class EventBusBackend(StrEnum):
     MEMORY = "memory"
     REDIS = "redis"
-    NATS = "nats"
+    KAFKA = "kafka"
+
+
+class PersistenceBackend(StrEnum):
+    MEMORY = "memory"
+    POSTGRES = "postgres"
 
 
 class LLMProviderConfig(BaseSettings):
@@ -60,13 +65,26 @@ class RedisConfig(BaseSettings):
     max_connections: int = 20
 
 
-class NatsConfig(BaseSettings):
-    """NATS connection configuration."""
+class KafkaConfig(BaseSettings):
+    """Kafka connection configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="NATS_")
+    model_config = SettingsConfigDict(env_prefix="KAFKA_")
 
-    url: str = "nats://localhost:4222"
-    max_reconnect_attempts: int = 10
+    bootstrap_servers: str = "localhost:9092"
+    consumer_group: str = "vclaw"
+    topic_prefix: str = "vclaw."
+    auto_offset_reset: str = "earliest"
+    max_concurrent: int = 50
+
+
+class PostgresConfig(BaseSettings):
+    """PostgreSQL connection configuration."""
+
+    model_config = SettingsConfigDict(env_prefix="POSTGRES_")
+
+    dsn: str = "postgresql://vclaw:vclaw@localhost:5432/vclaw"
+    min_pool_size: int = 5
+    max_pool_size: int = 20
 
 
 class VclawSettings(BaseSettings):
@@ -84,6 +102,7 @@ class VclawSettings(BaseSettings):
     port: int = 8080
 
     event_bus_backend: EventBusBackend = EventBusBackend.MEMORY
+    persistence_backend: str = "memory"
     agent_plugin_dirs: list[str] = Field(default_factory=lambda: ["plugins"])
     agent_scan_entrypoints: bool = True
 
@@ -93,7 +112,10 @@ class VclawSettings(BaseSettings):
 
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
-    nats: NatsConfig = Field(default_factory=NatsConfig)
+    kafka: KafkaConfig = Field(default_factory=KafkaConfig)
+    postgres: PostgresConfig = Field(default_factory=PostgresConfig)
+
+    enable_event_logging: bool = True
 
     llm_providers: list[dict[str, Any]] = Field(default_factory=list)
 

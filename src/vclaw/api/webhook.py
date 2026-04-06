@@ -67,12 +67,14 @@ async def readiness_check(request: Request) -> Response:
     return JSONResponse({"status": "ready"})
 
 
-def create_app() -> Starlette:
+def create_app(extra_routes: list[Route] | None = None) -> Starlette:
     """Create the Starlette ASGI application."""
     routes = [
         Route("/webhook/telegram", telegram_webhook, methods=["POST"]),
         Route("/health", health_check, methods=["GET"]),
         Route("/ready", readiness_check, methods=["GET"]),
     ]
+    if extra_routes:
+        routes.extend(extra_routes)
 
     return Starlette(routes=routes)
