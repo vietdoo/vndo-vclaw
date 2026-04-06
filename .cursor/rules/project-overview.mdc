@@ -1,0 +1,53 @@
+---
+description: Project overview and architecture context for AI agents and developers
+globs: ["**/*.py", "**/*.md", "**/*.toml", "**/*.yml", "**/*.yaml"]
+alwaysApply: true
+---
+
+# Vclaw AI Agent Orchestration Platform
+
+## What This Project Is
+
+Vclaw is a **production-ready AI agent orchestration platform** that routes Telegram commands to specialized, independently pluggable AI agents via a centralized orchestrator. The stack includes:
+
+- **Telegram bot** as the entry channel (webhook-based, rate-limited)
+- **Event bus** for async communication (in-memory dev / Redis Streams prod)
+- **Orchestrator** that classifies user intent via LLM and dispatches to agents
+- **Agent registry** with plug-and-play discovery (entry points + directory scanning)
+- **LLM router** with priority-based provider fallback (OpenAI-compatible)
+- **FastAPI monitoring API** for logs, events, and real-time WebSocket stats
+- **Docker Compose** stack: Postgres, Redis, Kafka, Prometheus, Grafana
+
+## Two "Apps" in One Repo
+
+| App | Entry | Port | Purpose |
+|-----|-------|------|---------|
+| Agent platform | `python -m vclaw.app` | — | Telegram webhook → orchestrator → agents |
+| Monitoring API | `uvicorn app.main:app` | 8000 | Logs/events REST API + WebSockets |
+
+## Key Design Principles
+
+1. **Layered architecture**: `domain` → `application` → `infrastructure`. Never import upward.
+2. **Plugin-first agents**: Drop a Python package in `plugins/` and it auto-registers. No platform changes needed.
+3. **Event-driven**: All internal communication via `CloudEvent` envelopes on the event bus.
+4. **LLM-agnostic**: Any OpenAI-compatible API works (OpenAI, OpenRouter, Ollama, vLLM).
+5. **Idempotent workflows**: Each message has a deterministic key; duplicates are rejected.
+6. **Multi-tenant**: `tenant_id` flows through every event, workflow, and agent request.
+
+## Primary Entry Points for Code Navigation
+
+- `src/vclaw/app.py` — Platform bootstrap (wires everything together)
+- `src/vclaw/application/orchestrator.py` — Core workflow engine
+- `src/vclaw/agents/base.py` — Agent contract (start here when building agents)
+- `src/vclaw/agents/registry.py` — Plugin discovery and lifecycle
+- `src/vclaw/domain/models.py` — All domain models (Pydantic v2)
+- `src/vclaw/domain/events.py` — CloudEvent types
+- `src/vclaw/infrastructure/llm/router.py` — LLM provider routing
+
+## When You See a File Ask Yourself
+
+- Is it in `domain/`? → Pure Pydantic model, no I/O allowed.
+- Is it in `application/`? → Orchestration logic, uses domain + infrastructure interfaces.
+- Is it in `infrastructure/`? → Concrete I/O adapter (HTTP, Redis, DB, etc.).
+- Is it in `agents/`? → Subclass of `AgentBase`. See `agents/README.md` for the contract.
+- Is it in `app/`? → The *separate* FastAPI monitoring service, not the agent platform.

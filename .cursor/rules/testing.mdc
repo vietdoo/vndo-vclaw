@@ -1,0 +1,141 @@
+---
+description: Testing conventions, fixtures, and patterns for Vclaw
+globs: ["tests/**/*.py", "conftest.py"]
+alwaysApply: false
+---
+
+# Testing Rules
+
+## Stack
+
+- **pytest** + **pytest-asyncio** (`asyncio_mode = "auto"` in `pyproject.toml` — no `@pytest.mark.asyncio` needed)
+- **pytest-cov** for coverage
+- **Locust** for load testing (`tests/load_test.py`)
+
+## Fixtures (`tests/conftest.py`)
+
+Always check `conftest.py` before creating fixtures — reuse shared ones:
+
+| Fixture | Scope | What it provides |
+|---------|-------|-----------------|
+| `event_bus` | function | `InMemoryEventBus` instance |
+| `state_store` | function | `StateStore` instance |
+| `llm_router` | function | `LLMRouter` with a mock/noop provider |
+| `registry` | function | `AgentRegistry` |
+| `orchestrator` | function | Wired `Orchestrator` |
+
+## Test File Naming
+
+| What you're testing | File name |
+|--------------------|-----------|
+| A builtin agent | `test_builtin_agents.py` |
+| The registry | `test_agent_registry.py` |
+| Event bus backends | `test_event_bus.py` |
+| State store | `test_state_store.py` |
+| Domain models | `test_models.py` |
+| Telegram gateway | `test_telegram.py` |
+| A new plugin agent | `tests/test_<agent_name>_agent.py` |
+| BrowserAgent | `tests/test_browser_agent.py` |
+
+## Agent Test Pattern
+
+```python
+import pytest
+from vclaw.domain.models import AgentRequest
+from vclaw.agents.builtin.my_module.agent import MyAgent
+
+@pytest.fixture
+async def agent():
+    a = MyAgent()
+    await a.setup()
+    return a
+
+async def test_execute_returns_response_text(agent):
+    req = AgentRequest(
+        workflow_id="wf-test",
+        subtask_id="st-test",
+        agent_name=agent.name,
+        input_data={"text": "test input"},
+    )
+    resp = await agent.run(req)
+    assert resp.success
+    assert "response_text" in resp.data
+
+async def test_execute_handles_missing_input(agent):
+    req = AgentRequest(
+        workflow_id="wf-test",
+        subtask_id="st-test",
+        agent_name=agent.name,
+        input_data={},
+    )
+    resp = await agent.run(req)
+    assert not resp.success
+    assert resp.error
+
+async def test_manifest_is_valid(agent):
+    assert agent.manifest.name
+    assert agent.manifest.capabilities
+```
+
+## Mock LLM Responses
+
+```python
+from unittest.mock import AsyncMock, patch
+from vclaw.domain.models import LLMResponse
+
+async def test_with_mocked_llm(agent):
+    mock_resp = LLMResponse(
+        content='{"intent": "task_creation", "confidence": 0.9, "target_agent": "task_management", "parameters": {}, "reasoning": "test"}',
+        model="gpt-4o-mini",
+        provider="openai",
+    )
+    with patch.object(agent, "call_llm", new=AsyncMock(return_value=mock_resp)):
+        req = AgentRequest(...)
+        resp = await agent.run(req)
+    assert resp.success
+```
+
+## Event Bus Testing
+
+```python
+async def test_event_published(event_bus):
+    received = []
+    async def handler(event):
+        received.append(event)
+
+    await event_bus.subscribe("vclaw.test.event", handler)
+    from vclaw.domain.events import CloudEvent
+    await event_bus.publish(CloudEvent(type="vclaw.test.event", data={"key": "value"}))
+    assert len(received) == 1
+    assert received[0].data["key"] == "value"
+```
+
+## What to Always Test
+
+For every agent:
+- [ ] Success path with valid input
+- [ ] Empty / missing input → `success=False`
+- [ ] Fallback path when `call_llm` raises
+- [ ] Manifest has non-empty `name`, `capabilities`
+- [ ] `response_text` key present in `data` on success
+
+For infrastructure:
+- [ ] Publish + subscribe round-trip
+- [ ] Idempotency check (duplicate key rejected)
+- [ ] State save + load
+
+## Running Tests
+
+```bash
+# All tests
+pytest tests/ -v
+
+# Single file
+pytest tests/test_builtin_agents.py -v
+
+# With coverage
+pytest tests/ --cov=src/vclaw --cov-report=term-missing
+
+# Load test (requires running stack)
+make load-test
+```

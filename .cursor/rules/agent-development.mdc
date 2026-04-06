@@ -1,0 +1,139 @@
+---
+description: Rules and patterns for building, testing, and registering Vclaw agents
+globs: ["src/vclaw/agents/**/*.py", "plugins/**/*.py", "examples/**/*.py", "tests/test_*agent*.py", "tests/test_*builtin*.py"]
+alwaysApply: false
+---
+
+# Agent Development Rules
+
+## Agent Contract (Non-Negotiable)
+
+Every agent MUST:
+
+1. **Subclass `AgentBase`** from `vclaw.agents.base`.
+2. **Declare a `ClassVar[AgentManifest]`** — this is used for routing, capability indexing, and LLM context.
+3. **Implement `async def execute(self, request: AgentRequest) -> AgentResponse`**.
+4. **Never raise from `execute()`** — return `AgentResponse(success=False, error=...)` instead.
+5. **Include `response_text` in `data`** if you want the Telegram response handler to send a reply.
+
+## Manifest Checklist
+
+```python
+manifest: ClassVar[AgentManifest] = AgentManifest(
+    name="my_agent",              # unique, snake_case, matches entry point key
+    version="0.1.0",
+    description="...",            # shown to the orchestrator's LLM — be descriptive
+    capabilities=[
+        AgentCapability(
+            name="my_capability", # used for O(1) routing lookup
+            description="...",    # also shown to LLM — be specific about input/output
+        ),
+    ],
+    tools=[                       # only needed if using LLM tool-calling
+        ToolDefinition(
+            name="my_tool",
+            description="...",
+            parameters={"param": {"type": "string", "description": "..."}},
+            required_params=["param"],
+        ),
+    ],
+    max_concurrent=5,             # tune per agent workload
+    timeout_seconds=30.0,         # set to expected P99 latency * 1.5
+    retry_policy=RetryPolicy(max_retries=2, base_delay_seconds=0.5),
+    tags=["category", "..."],
+)
+```
+
+## LLM Tool-Calling Pattern
+
+When the agent needs the LLM to interpret natural language:
+
+```python
+async def execute(self, request: AgentRequest) -> AgentResponse:
+    text = request.input_data.get("text", "")
+    
+    try:
+        llm_resp = await self.call_llm(LLMRequest(
+            messages=[
+                {"role": "system", "content": "...system prompt..."},
+                {"role": "user", "content": text},
+            ],
+            tools=self.get_tool_schemas(),
+            tool_choice="auto",
+            temperature=0.0,
+        ))
+    except Exception as exc:
+        return await self._fallback_execution(request, str(exc))
+
+    if llm_resp.tool_calls:
+        return await self._handle_tool_calls(request, llm_resp.tool_calls)
+
+    return AgentResponse(...)
+```
+
+Always implement `_fallback_execution` for when LLM is unavailable.
+
+## Plug-in Registration (Choose One)
+
+### Drop-in directory (preferred for new agents)
+```
+plugins/
+└── my_agent/
+    ├── __init__.py    # export MyAgent
+    └── agent.py
+```
+
+### Entry point (for packaged agents)
+```toml
+# pyproject.toml
+[project.entry-points."vclaw.agents"]
+my_agent = "my_package:MyAgent"
+```
+
+### Manual (testing/special cases)
+```python
+await registry.register(MyAgent())
+```
+
+## Testing Pattern
+
+```python
+import pytest
+from vclaw.domain.models import AgentRequest
+from my_agent import MyAgent
+
+@pytest.fixture
+async def agent():
+    a = MyAgent()
+    await a.setup()
+    return a
+
+@pytest.mark.asyncio
+async def test_execute_success(agent):
+    req = AgentRequest(
+        workflow_id="wf-1", subtask_id="st-1",
+        agent_name="my_agent",
+        input_data={"text": "..."},
+    )
+    resp = await agent.run(req)
+    assert resp.success
+    assert "response_text" in resp.data
+```
+
+## Common Mistakes to Avoid
+
+- **Do NOT import from `vclaw.application` inside an agent** — agents are independent; they receive all context via `AgentRequest`.
+- **Do NOT use `asyncio.run()` inside `execute()`** — everything is already async.
+- **Do NOT store mutable state on the agent class** — use instance variables (`self._store = ...`) for per-instance state that gets initialized in `__init__` or `setup()`.
+- **Do NOT skip the `response_text` key** in `data` — the `ResponseHandler` sends `data["response_text"]` to the user.
+- **Do NOT hardcode `timeout_seconds=60`** for agents making external HTTP calls — use a realistic value and handle `TimeoutError` in `_fallback_execution`.
+
+## BrowserAgent-Specific Rules
+
+When working with `BrowserAgent` (`src/vclaw/agents/builtin/browser/agent.py`):
+
+- Always use `async with` for browser sessions to ensure cleanup.
+- Prefer `fetch_page` tool for simple data extraction; use `click_element` / `fill_form` only for automation workflows.
+- Set `BROWSER_HEADLESS=true` in production; `false` only for debugging.
+- The agent falls back to `httpx` if Playwright is not installed — do not assume browser is always available.
+- Screenshots are base64-encoded in `data["screenshot"]` — strip before logging.

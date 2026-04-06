@@ -1,0 +1,157 @@
+---
+description: Infrastructure layer patterns — event bus, LLM router, persistence, Telegram
+globs: ["src/vclaw/infrastructure/**/*.py", "app/**/*.py", "tests/test_event_bus*.py", "tests/test_state_store*.py"]
+alwaysApply: false
+---
+
+# Infrastructure Layer Patterns
+
+## Event Bus Usage
+
+### Publishing an event
+```python
+from vclaw.domain.events import CloudEvent, EventTypes
+
+await self._event_bus.publish(
+    CloudEvent(
+        type=EventTypes.AGENT_COMPLETED,
+        data=response.model_dump(mode="json"),
+        correlation_id=workflow.id,
+        tenant_id=workflow.tenant_id,
+    )
+)
+```
+
+### Subscribing to an event
+```python
+await self._event_bus.subscribe(EventTypes.MESSAGE_NORMALIZED, self._handle_message)
+```
+
+Handler signature: `async def _handle_message(self, event: CloudEvent) -> None`
+
+### Backend Selection
+- `VCLAW_EVENT_BUS_BACKEND=memory` — `InMemoryEventBus` (default, dev/test)
+- `VCLAW_EVENT_BUS_BACKEND=redis` — `RedisStreamsEventBus` (production)
+
+The `InMemoryEventBus` does NOT persist across restarts. Use Redis for anything requiring durability.
+
+## LLM Router
+
+### Adding a new provider
+```python
+from vclaw.infrastructure.llm.openai_compat import OpenAICompatProvider
+
+router.add_provider(OpenAICompatProvider(
+    name="my_provider",
+    api_key="...",
+    base_url="https://api.my-provider.com/v1",
+    model="my-model",
+    timeout_seconds=30.0,
+    cost_per_1k_input=0.001,
+    cost_per_1k_output=0.002,
+))
+```
+
+### Provider priority
+Lower `priority` value = tried first. Configure in `VCLAW_LLM_PROVIDERS` JSON env var:
+```json
+[
+  {"name": "openai", "priority": 1, "api_key": "sk-...", "model": "gpt-4o-mini"},
+  {"name": "fallback", "priority": 2, "api_key": "...", "base_url": "...", "model": "..."}
+]
+```
+
+### Resetting unhealthy providers
+```python
+await router.reset_provider("openai")  # after manual investigation
+```
+
+## State Store
+
+### Save/Load pattern
+```python
+# Save (upsert)
+await self._state_store.save(workflow)
+
+# Load
+workflow = await self._state_store.get(workflow_id)
+if workflow is None:
+    raise ValueError(f"Workflow {workflow_id} not found")
+```
+
+### Idempotency guard
+```python
+if await self._state_store.check_idempotency(key):
+    return  # already processed
+await self._state_store.mark_idempotency(key)
+```
+
+The in-memory `StateStore` is suitable for single-instance development. For production or multi-instance deployment, replace with a Redis or PostgreSQL implementation that shares state across processes.
+
+## Telegram Gateway
+
+### Sending messages
+```python
+await self._telegram.send_message(
+    chat_id=message.chat_id,
+    text="Your reply here (supports MarkdownV2)",
+)
+```
+
+Special characters in MarkdownV2 must be escaped: `. ! - ( ) [ ] { } # + = | > ~`
+
+### Webhook setup
+Called automatically in `VclawPlatform.start()`. Do not call manually unless testing webhook re-registration.
+
+### Rate limiting
+The `RateLimiter.allow(chat_id)` check happens in the webhook handler before the message hits the event bus. If rate limited, the request gets a 429 response without emitting any events.
+
+## Observability
+
+### Structlog usage
+```python
+import structlog
+logger = structlog.get_logger(__name__)
+
+# Bind context for the lifetime of a coroutine/request
+structlog.contextvars.bind_contextvars(workflow_id=workflow.id, tenant_id=tenant_id)
+
+logger.info("workflow_started", status="ROUTING")
+logger.warning("provider_failed", provider="openai", error=str(exc))
+logger.exception("unexpected_error")  # automatically includes traceback
+```
+
+### OpenTelemetry spans
+```python
+from opentelemetry import trace
+
+tracer = trace.get_tracer(__name__)
+
+with tracer.start_as_current_span("my_operation", attributes={"key": "value"}):
+    await do_work()
+```
+
+Span names follow: `component.operation` (e.g., `agent.weather.run`, `orchestrator.classify_intent`).
+
+## Kafka (Monitoring API)
+
+### Producing an event
+```python
+from app.kafka.producer import KafkaProducer
+
+await producer.send("workflow-events", payload.model_dump())
+```
+
+### Consumer behavior
+The consumer runs as a background `asyncio.Task` in the FastAPI lifespan. It:
+1. Deserializes messages from Kafka.
+2. Inserts records into PostgreSQL via `event_service` / `log_service`.
+3. Publishes to Redis pub/sub for WebSocket fan-out.
+4. Logs and continues on deserialization errors (no crash).
+
+## PostgreSQL / SQLAlchemy
+
+- Use `async with SessionLocal() as session:` for all DB operations.
+- Always `await session.commit()` after writes; `await session.rollback()` on errors.
+- Use `select(Model).where(...)` with `await session.execute(...)` — no sync ORM calls.
+- Connection pool configured in `app/db/base.py` with `pool_pre_ping=True` and `pool_recycle=3600`.

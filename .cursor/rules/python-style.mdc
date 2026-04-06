@@ -1,0 +1,116 @@
+---
+description: Python coding style and quality rules for the Vclaw codebase
+globs: ["**/*.py"]
+alwaysApply: true
+---
+
+# Python Style Rules
+
+## General
+
+- **Python 3.11+** — use `match`, `tomllib`, `ExceptionGroup`, `Self`, `LiteralString` where appropriate.
+- **`from __future__ import annotations`** at the top of every module for PEP 563 deferred evaluation.
+- **Pydantic v2** — use `model_validate`, `model_dump(mode="json")`, `Field(default_factory=...)`. Never use Pydantic v1 APIs.
+- **`structlog`** for logging — never use `print()` or `logging.getLogger()` directly.
+- **Type annotations are mandatory** — all function signatures must be fully annotated including return types.
+- **`ClassVar`** for class-level attributes in Pydantic models (especially `manifest` in agents).
+
+## Imports Order (enforced by ruff)
+
+```python
+from __future__ import annotations
+
+# stdlib
+import asyncio
+import json
+from typing import Any, ClassVar
+
+# third-party
+import structlog
+from pydantic import BaseModel
+
+# local
+from vclaw.domain.models import AgentRequest
+```
+
+## Async Rules
+
+- All I/O must be `async` — no blocking calls in async functions (no `time.sleep`, no `requests`, no `open()` for large files).
+- Use `asyncio.gather(*tasks, return_exceptions=True)` for parallel execution; handle exceptions from results.
+- Use `asyncio.Semaphore` for concurrency control — already wired in `AgentBase.run()`.
+- Never `await` inside a list comprehension — use `asyncio.gather` with a list of coroutines.
+
+## Error Handling
+
+- **Agent `execute()`**: catch all exceptions, return `AgentResponse(success=False, error=str(exc))`.
+- **Infrastructure adapters**: let domain-level exceptions propagate; catch `httpx.HTTPError`, `redis.RedisError`, etc. at the boundary and convert to typed errors.
+- **Orchestrator**: catches at workflow level; transitions workflow to `FAILED` on unhandled exceptions.
+
+## Pydantic Model Rules
+
+```python
+class MyModel(BaseModel):
+    id: str = Field(default_factory=_ulid)     # not default_factory=lambda: str(ULID())
+    items: list[str] = Field(default_factory=list)   # not []
+    config: dict[str, Any] = Field(default_factory=dict)
+    timestamp: datetime = Field(default_factory=_now)
+```
+
+- Use `StrEnum` for string enumerations (not `str, Enum`).
+- Use `model_dump(mode="json")` when serializing for JSON transport (handles `datetime`, `ULID`, etc.).
+
+## Naming Conventions
+
+| Pattern | Convention |
+|---------|-----------|
+| Modules | `snake_case.py` |
+| Classes | `PascalCase` |
+| Functions / methods | `snake_case` |
+| Constants | `UPPER_SNAKE_CASE` |
+| Private methods | `_leading_underscore` |
+| Agent names (manifest) | `snake_case` matching entry point key |
+| Event types | `vclaw.noun.verb` (e.g., `vclaw.agent.completed`) |
+
+## Comments and Docstrings
+
+- Module-level docstring: one sentence describing the module's responsibility.
+- Class docstring: what the class does and its key invariants.
+- Method docstring: only for non-obvious logic. Skip obvious `get_/set_` wrappers.
+- No inline comments that restate what the code does (`# increment counter`).
+- Use inline comments for non-obvious intent (`# Redis XACK to prevent redelivery on crash`).
+
+## Forbidden Patterns
+
+```python
+# ❌ Blocking I/O in async context
+async def bad():
+    import time; time.sleep(1)
+    requests.get("...")
+    open("file.txt").read()
+
+# ❌ Pydantic v1 patterns
+class Model(BaseModel):
+    class Config:
+        orm_mode = True
+
+# ❌ Bare except
+try:
+    ...
+except:
+    pass
+
+# ❌ print() for logging
+print("debug info")
+
+# ❌ Mutable default argument
+def fn(items=[]):
+    ...
+```
+
+## Linting
+
+Run `ruff check .` and `ruff format .` before committing. The project uses:
+- Line length: 120
+- Target: `py311`
+- Selected rules: `E, F, W, I, N, UP, B, SIM`
+- Ignored: `E501` (line length handled by formatter)
