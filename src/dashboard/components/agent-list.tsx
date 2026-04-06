@@ -19,8 +19,8 @@ export function AgentList({ agents }: AgentListProps) {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h2 className={styles.title}>Agents</h2>
-        <span className={styles.count}>{agents.length} registered</span>
+        <h3 className={styles.title}>Agents</h3>
+        <span className={styles.count}>{agents.filter(a => a.status === "online" || a.status === "busy").length}/{agents.length} online</span>
       </div>
       <div className={styles.list}>
         {agents.map((agent) => (
@@ -59,9 +59,7 @@ export function AgentList({ agents }: AgentListProps) {
             </div>
             <div className={styles.toolsRow}>
               {agent.tools.map((tool) => (
-                <span key={tool} className={styles.toolBadge}>
-                  {tool}
-                </span>
+                <span key={tool} className={styles.toolBadge}>{tool}</span>
               ))}
             </div>
             <div className={styles.lastActive}>

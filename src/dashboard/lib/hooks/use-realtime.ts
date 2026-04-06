@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   PlatformMetrics,
   AgentInfo,
@@ -8,6 +8,10 @@ import type {
   EventEntry,
   TimeSeriesPoint,
   AgentLoadPoint,
+  WorkflowEntry,
+  LogEntry,
+  SystemStatus,
+  RequestLogEntry,
 } from "../types";
 import {
   generateMetrics,
@@ -16,6 +20,10 @@ import {
   generateEvent,
   generateTimeSeries,
   generateAgentLoad,
+  generateWorkflow,
+  generateLogEntry,
+  generateSystemStatus,
+  generateRequestLog,
 } from "../mock-data";
 
 const METRICS_INTERVAL = 2000;
@@ -48,9 +56,9 @@ export function useAgents() {
   return agents;
 }
 
-export function useToolCallFeed(maxItems = 20) {
+export function useToolCallFeed(maxItems = 25) {
   const [calls, setCalls] = useState<ToolCall[]>(() =>
-    Array.from({ length: 8 }, () => generateToolCall())
+    Array.from({ length: 10 }, () => generateToolCall())
   );
 
   useEffect(() => {
@@ -66,9 +74,9 @@ export function useToolCallFeed(maxItems = 20) {
   return calls;
 }
 
-export function useEventFeed(maxItems = 30) {
+export function useEventFeed(maxItems = 40) {
   const [events, setEvents] = useState<EventEntry[]>(() =>
-    Array.from({ length: 10 }, () => generateEvent())
+    Array.from({ length: 12 }, () => generateEvent())
   );
 
   useEffect(() => {
@@ -84,23 +92,21 @@ export function useEventFeed(maxItems = 30) {
   return events;
 }
 
-export function useTimeSeries(points = 30) {
+export function useTimeSeries(points = 40) {
   const [data, setData] = useState<TimeSeriesPoint[]>(() => generateTimeSeries(points));
 
   useEffect(() => {
     const id = setInterval(() => {
       setData((prev) => {
         const now = new Date().toLocaleTimeString("en-US", {
-          hour12: false,
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
+          hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
         });
         const newPoint: TimeSeriesPoint = {
           time: now,
           requests: Math.floor(Math.random() * 60) + 20,
           latency: Math.floor(Math.random() * 400) + 100,
           errors: Math.floor(Math.random() * 3),
+          p99: Math.floor(Math.random() * 800) + 400,
         };
         return [...prev.slice(1), newPoint];
       });
@@ -111,17 +117,14 @@ export function useTimeSeries(points = 30) {
   return data;
 }
 
-export function useAgentLoad(points = 30) {
+export function useAgentLoad(points = 40) {
   const [data, setData] = useState<AgentLoadPoint[]>(() => generateAgentLoad(points));
 
   useEffect(() => {
     const id = setInterval(() => {
       setData((prev) => {
         const now = new Date().toLocaleTimeString("en-US", {
-          hour12: false,
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
+          hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
         });
         const newPoint: AgentLoadPoint = {
           time: now,
@@ -137,4 +140,71 @@ export function useAgentLoad(points = 30) {
   }, [points]);
 
   return data;
+}
+
+export function useWorkflows(maxItems = 30) {
+  const [workflows, setWorkflows] = useState<WorkflowEntry[]>(() =>
+    Array.from({ length: 15 }, () => generateWorkflow())
+  );
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setWorkflows((prev) => {
+        const next = [generateWorkflow(), ...prev];
+        return next.slice(0, maxItems);
+      });
+    }, 3000);
+    return () => clearInterval(id);
+  }, [maxItems]);
+
+  return workflows;
+}
+
+export function useLogs(maxItems = 50) {
+  const [logs, setLogs] = useState<LogEntry[]>(() =>
+    Array.from({ length: 20 }, () => generateLogEntry())
+  );
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setLogs((prev) => {
+        const next = [generateLogEntry(), ...prev];
+        return next.slice(0, maxItems);
+      });
+    }, 800);
+    return () => clearInterval(id);
+  }, [maxItems]);
+
+  return logs;
+}
+
+export function useSystemStatus() {
+  const [status, setStatus] = useState<SystemStatus>(() => generateSystemStatus());
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setStatus(generateSystemStatus());
+    }, 2000);
+    return () => clearInterval(id);
+  }, []);
+
+  return status;
+}
+
+export function useRequestLog(maxItems = 30) {
+  const [requests, setRequests] = useState<RequestLogEntry[]>(() =>
+    Array.from({ length: 12 }, () => generateRequestLog())
+  );
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setRequests((prev) => {
+        const next = [generateRequestLog(), ...prev];
+        return next.slice(0, maxItems);
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [maxItems]);
+
+  return requests;
 }

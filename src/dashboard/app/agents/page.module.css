@@ -1,0 +1,271 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pageTitle {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.pageDesc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.summaryRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.summaryItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.agentGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.agentCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  transition: border-color var(--transition-fast);
+}
+
+.agentCard:hover {
+  border-color: var(--border-hover);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.agentName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.dot[data-status="online"] { background: var(--green); box-shadow: 0 0 4px rgba(63, 207, 142, 0.4); }
+.dot[data-status="busy"] { background: var(--warning); }
+.dot[data-status="offline"] { background: var(--text-tertiary); }
+.dot[data-status="degraded"] { background: var(--error); }
+
+.name {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.version {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.statusBadge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.statusBadge[data-status="online"] { color: var(--green); background: var(--green-bg); }
+.statusBadge[data-status="busy"] { color: var(--warning); background: var(--warning-bg); }
+.statusBadge[data-status="offline"] { color: var(--text-tertiary); background: var(--accent-dim); }
+.statusBadge[data-status="degraded"] { color: var(--error); background: var(--error-bg); }
+
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-tertiary);
+}
+
+.metricLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.metricValue {
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.metricValue[data-error="true"] { color: var(--error); }
+
+.capabilitiesSection,
+.toolsSection {
+  margin-bottom: 8px;
+}
+
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.capTag {
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: var(--accent-dim);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.toolTag {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--purple);
+  background: var(--purple-bg);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-quaternary);
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.recentSection {
+  margin-top: 4px;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.tableWrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.table th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-inset);
+}
+
+.table td {
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  color: var(--text-secondary);
+}
+
+.table tr:hover td {
+  background: var(--accent-dim);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.dimText {
+  color: var(--text-quaternary);
+  font-size: 11px;
+}
+
+.statusPill {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.statusPill[data-status="success"] { color: var(--green); background: var(--green-bg); }
+.statusPill[data-status="running"] { color: var(--blue); background: var(--blue-bg); }
+.statusPill[data-status="error"] { color: var(--error); background: var(--error-bg); }
+.statusPill[data-status="timeout"] { color: var(--warning); background: var(--warning-bg); }
+
+@media (max-width: 900px) {
+  .agentGrid { grid-template-columns: 1fr; }
+  .metricsRow { grid-template-columns: repeat(3, 1fr); }
+}

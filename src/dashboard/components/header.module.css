@@ -1,97 +1,72 @@
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  height: 56px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  backdrop-filter: blur(12px);
-}
-
-.left {
+.bar {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-primary);
-}
-
-.title {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.separator {
-  color: var(--text-tertiary);
-  font-size: 18px;
-  font-weight: 300;
-}
-
-.subtitle {
-  color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 400;
-}
-
-.right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  background: var(--accent-dim);
+  padding: 8px 14px;
+  background: var(--bg-card);
   border: 1px solid var(--border);
-  text-transform: capitalize;
+  border-radius: var(--radius-md);
+  font-size: 11px;
 }
 
-.badge[data-env="production"] .dot {
-  background: var(--green);
-  box-shadow: 0 0 6px var(--green);
+.barGroup {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-tertiary);
 }
 
-.badge[data-env="development"] .dot {
-  background: var(--warning);
+.barLabel {
+  color: var(--text-tertiary);
+}
+
+.barValue {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.barValue[data-warn="true"] {
+  color: var(--warning);
+}
+
+.barDivider {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+}
+
+.barRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.serviceDot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
+}
+
+.dot[data-ok="true"] {
   background: var(--green);
+  box-shadow: 0 0 4px rgba(63, 207, 142, 0.3);
 }
 
-.uptime {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.dot[data-ok="false"] {
+  background: var(--error);
+  box-shadow: 0 0 4px rgba(229, 72, 77, 0.3);
 }
 
-.uptimeLabel {
-  font-size: 12px;
+.serviceLabel {
+  font-size: 10px;
   color: var(--text-tertiary);
-}
-
-.uptimeValue {
-  font-size: 13px;
-  font-family: var(--font-mono);
-  color: var(--text-secondary);
 }

@@ -1,7 +1,7 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   min-height: 0;
 }
 
@@ -14,62 +14,54 @@
 }
 
 .title {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .legend {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .legendItem {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
+  gap: 4px;
+  font-size: 10px;
   color: var(--text-tertiary);
 }
 
 .legendDot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
 }
 
-.legendItem[data-status="running"] .legendDot {
-  background: var(--success);
-}
-
-.legendItem[data-status="success"] .legendDot {
-  background: var(--green);
-}
-
-.legendItem[data-status="error"] .legendDot {
-  background: var(--error);
-}
+.legendItem[data-status="running"] .legendDot { background: var(--blue); }
+.legendItem[data-status="success"] .legendDot { background: var(--green); }
+.legendItem[data-status="error"] .legendDot { background: var(--error); }
 
 .feed {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   overflow-y: auto;
-  max-height: 480px;
-  padding-right: 4px;
+  max-height: 420px;
+  padding-right: 2px;
 }
 
 .item {
   display: flex;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  transition: background var(--transition);
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius-xs);
+  transition: background var(--transition-fast);
   border: 1px solid transparent;
 }
 
 .item:first-child {
-  animation: slideInRight 0.25s ease-out forwards;
+  animation: slideInRight 0.2s ease-out forwards;
 }
 
 .item:hover {
@@ -81,28 +73,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  font-size: 12px;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
   flex-shrink: 0;
   margin-top: 1px;
 }
 
-.statusIcon[data-status="running"] {
-  color: var(--success);
-}
-
-.statusIcon[data-status="success"] {
-  color: var(--green);
-}
-
-.statusIcon[data-status="error"] {
-  color: var(--error);
-}
-
-.statusIcon[data-status="timeout"] {
-  color: var(--warning);
-}
+.statusIcon[data-status="running"] { color: var(--blue); }
+.statusIcon[data-status="success"] { color: var(--green); }
+.statusIcon[data-status="error"] { color: var(--error); }
+.statusIcon[data-status="timeout"] { color: var(--warning); }
 
 .content {
   flex: 1;
@@ -113,12 +94,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 3px;
+  gap: 6px;
+  margin-bottom: 2px;
 }
 
 .toolName {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
   font-family: var(--font-mono);
@@ -128,39 +109,25 @@
 }
 
 .time {
-  font-size: 11px;
-  color: var(--text-tertiary);
+  font-size: 10px;
+  color: var(--text-quaternary);
   flex-shrink: 0;
 }
 
 .bottomRow {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 5px;
+  font-size: 11px;
   color: var(--text-tertiary);
 }
 
-.agentName {
-  color: var(--text-secondary);
-}
-
-.divider {
-  color: var(--text-tertiary);
-}
-
-.workflowId {
-  font-family: var(--font-mono);
-  font-size: 11px;
-}
-
-.duration {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-secondary);
-}
+.agentName { color: var(--text-secondary); font-size: 10px; }
+.divider { color: var(--text-quaternary); }
+.workflowId { font-family: var(--font-mono); font-size: 10px; }
+.duration { font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); }
 
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(8px); }
+  from { opacity: 0; transform: translateX(6px); }
   to { opacity: 1; transform: translateX(0); }
 }

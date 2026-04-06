@@ -1,0 +1,149 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.pageTitle {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.pageDesc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.summaryRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.dot[data-color="blue"] { background: var(--blue); }
+.dot[data-color="green"] { background: var(--green); }
+.dot[data-color="red"] { background: var(--error); }
+.dot[data-color="yellow"] { background: var(--warning); }
+
+.statsBar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.statBox {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statBoxLabel {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.statBoxValue {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tableWrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.table th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-inset);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.table tr:hover td { background: var(--accent-dim); }
+.table tr:last-child td { border-bottom: none; }
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.dimText {
+  color: var(--text-quaternary);
+  font-size: 11px;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+.statusPill[data-status="completed"] { color: var(--green); background: var(--green-bg); }
+.statusPill[data-status="running"] { color: var(--blue); background: var(--blue-bg); }
+.statusPill[data-status="failed"] { color: var(--error); background: var(--error-bg); }
+.statusPill[data-status="queued"] { color: var(--warning); background: var(--warning-bg); }
+.statusPill[data-status="cancelled"] { color: var(--text-tertiary); background: var(--accent-dim); }
+
+.intentBadge {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--purple);
+  background: var(--purple-bg);
+  padding: 1px 6px;
+  border-radius: 3px;
+}

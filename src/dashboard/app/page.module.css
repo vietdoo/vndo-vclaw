@@ -1,52 +1,37 @@
 .root {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
-}
-
-.main {
-  flex: 1;
-  padding: 24px;
-  max-width: 1440px;
-  margin: 0 auto;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 .metricsGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 
 .chartsGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 
-.bottomGrid {
+.middleGrid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px;
+  gap: 12px;
   min-height: 0;
 }
 
-.agentPanel {
-  min-width: 0;
-  overflow: hidden;
-}
-
-.feedPanel {
-  min-width: 0;
-  overflow: hidden;
-}
-
+.agentPanel,
+.feedPanel,
 .eventPanel {
   min-width: 0;
   overflow: hidden;
+}
+
+.activitySection {
+  margin-top: 0;
 }
 
 @media (max-width: 1200px) {
@@ -58,7 +43,7 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .bottomGrid {
+  .middleGrid {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -76,7 +61,7 @@
     grid-template-columns: 1fr;
   }
 
-  .bottomGrid {
+  .middleGrid {
     grid-template-columns: 1fr;
   }
 }
