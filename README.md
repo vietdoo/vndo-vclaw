@@ -1,6 +1,6 @@
 # Vclaw AI Agent Orchestration Platform
 
-Production-ready, scalable AI agent platform that routes Telegram commands to specialized, independently pluggable AI agents via a centralized orchestrator.
+Production-ready, scalable AI agent platform that routes Telegram commands to specialized, independently pluggable AI agents via a centralized orchestrator — with full Docker support, Kafka event bus, PostgreSQL persistence, and a real-time monitoring API.
 
 ---
 
@@ -96,6 +96,10 @@ Production-ready, scalable AI agent platform that routes Telegram commands to sp
 vclaw/
 ├── pyproject.toml                    # Dependencies, entry points, tool config
 ├── README.md
+├── Dockerfile                        # Multi-stage, non-root, HEALTHCHECK
+├── docker-compose.yml                # Full stack: API + Postgres + Redis + Kafka + Grafana
+├── Makefile                          # up / down / logs / migrate / load-test
+├── .env.example
 ├── src/
 │   └── vclaw/
 │       ├── __init__.py
@@ -109,36 +113,22 @@ vclaw/
 │       ├── application/              # Application Layer (use cases)
 │       │   └── orchestrator.py      # Intent → decompose → route → aggregate
 │       │
-│       ├── infrastructure/           # Infrastructure Layer
-│       │   ├── event_bus/
-│       │   │   ├── base.py          # Abstract EventBus interface
-│       │   │   ├── memory.py        # In-memory (dev/test)
-│       │   │   └── redis_streams.py # Redis Streams (production)
-│       │   ├── llm/
-│       │   │   ├── base.py          # Abstract LLMProvider
-│       │   │   ├── openai_compat.py # OpenAI-compatible provider
-│       │   │   └── router.py        # Multi-provider fallback router
-│       │   ├── persistence/
-│       │   │   └── state_store.py   # Workflow state + idempotency
-│       │   ├── observability/
-│       │   │   ├── logging.py       # structlog setup
-│       │   │   └── tracing.py       # OpenTelemetry setup
-│       │   └── telegram/
-│       │       ├── gateway.py       # Webhook + message handling
-│       │       └── rate_limiter.py  # Sliding-window rate limiter
-│       │
-│       ├── agents/                   # Agent Subsystem
-│       │   ├── base.py              # AgentBase abstract class
-│       │   ├── registry.py          # Discovery, lifecycle, indexing
-│       │   └── builtin/
-│       │       ├── task_management/  # Kanban task agent
-│       │       └── public_service/   # Government API agent
-│       │
-│       └── api/                      # API Layer
-│           ├── webhook.py           # Starlette HTTP endpoints
-│           └── response_handler.py  # Event → Telegram reply bridge
+│       └── infrastructure/           # Infrastructure Layer
+│           ├── event_bus/
+│           ├── llm/
+│           ├── persistence/
+│           ├── observability/
+│           └── telegram/
 │
-├── tests/                            # Test suite
+├── app/                              # Monitoring & logging REST API
+│   ├── main.py                       # FastAPI app with lifespan
+│   ├── api/routes/                   # logs, events, stats, health, ws
+│   ├── models/                       # SQLAlchemy: SystemLog, WorkflowEvent, etc.
+│   ├── kafka/                        # Producer + consumer (aiokafka)
+│   └── services/                     # DB CRUD, Redis cache, stats
+│
+├── migrations/                       # Alembic migrations
+├── tests/                            # Test suite (platform + API)
 ├── plugins/                          # Drop-in agent plugins
 └── examples/
     └── plugin_agent/                # Example custom agent
@@ -228,7 +218,6 @@ class MyAgent(AgentBase):
 
     async def execute(self, request: AgentRequest) -> AgentResponse:
         text = request.input_data.get("text", "")
-        # Your logic here
         return AgentResponse(
             workflow_id=request.workflow_id,
             subtask_id=request.subtask_id,
@@ -366,6 +355,8 @@ print(response.data)
 
 ## Quick Start
 
+### Agent Platform (Telegram bot)
+
 ```bash
 # Install
 pip install -e ".[dev]"
@@ -381,6 +372,24 @@ python -m vclaw.app
 pytest tests/ -v
 ```
 
+### Full Docker Stack (API + monitoring)
+
+```bash
+# 1. Copy env config
+cp .env.example .env
+
+# 2. Build and start everything
+make build
+make up
+
+# 3. Verify
+curl http://localhost:8000/health
+```
+
+Open http://localhost:8000/docs for the interactive API documentation.
+Open http://localhost:3000 for Grafana dashboards (admin / admin123).
+Open http://localhost:9090 for Prometheus.
+
 ## Configuration
 
 All settings via environment variables with `VCLAW_` prefix. See `src/vclaw/config.py` for the complete schema.
@@ -393,3 +402,77 @@ All settings via environment variables with `VCLAW_` prefix. See `src/vclaw/conf
 | `TELEGRAM_BOT_TOKEN` | - | Telegram bot API token |
 | `TELEGRAM_WEBHOOK_URL` | - | Public webhook URL |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
+
+---
+
+## Docker Services
+
+| Service | Role | Port |
+|---------|------|------|
+| `api` | FastAPI monitoring/logging API | 8000 |
+| `postgres` | PostgreSQL 16 — logs, events, metrics | 5432 |
+| `redis` | Cache + pub/sub for WebSocket | 6379 |
+| `kafka` | Message bus (workflow events, system logs) | 29092 |
+| `zookeeper` | Kafka coordinator | — |
+| `prometheus` | Metrics scraping | 9090 |
+| `grafana` | Dashboards (auto-provisioned) | 3000 |
+
+---
+
+## Monitoring API Endpoints
+
+### Health
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Full health check (Postgres, Redis, Kafka) |
+| GET | `/live` | Liveness probe |
+| GET | `/ready` | Readiness probe |
+| GET | `/metrics` | Prometheus metrics |
+
+### Logs (`/api/v1/logs`)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/logs` | Create a log entry |
+| GET | `/api/v1/logs` | List logs (paginated, filterable) |
+| GET | `/api/v1/logs/stats` | Log statistics |
+
+### Workflow Events (`/api/v1/events`)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/events` | Create a workflow event |
+| GET | `/api/v1/events` | List events (paginated, filterable) |
+| GET | `/api/v1/events/{id}` | Get event by ID |
+| PATCH | `/api/v1/events/{id}` | Update event status/result |
+| GET | `/api/v1/events/stats/summary` | Workflow stats |
+
+### Stats (`/api/v1/stats`)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/stats/system` | CPU, memory, disk |
+| GET | `/api/v1/stats/dashboard` | Full dashboard snapshot (cached 10s) |
+
+### WebSocket (real-time)
+| Path | Description |
+|------|-------------|
+| `ws://localhost:8000/ws/system` | System stats pushed every 2s |
+| `ws://localhost:8000/ws/events` | Workflow events via Redis pub/sub |
+
+---
+
+## Fault Tolerance
+
+- **Kafka producer**: `acks=all`, idempotent, retries with exponential backoff (tenacity)
+- **Kafka consumer**: auto-reconnect loop, dead-letter logging
+- **PostgreSQL**: connection pool with `pool_pre_ping`, `pool_recycle`
+- **Redis**: `retry_on_timeout`, non-blocking (cache failures are logged, not raised)
+- **API startup**: Kafka/Redis failures are logged as warnings; app starts in degraded mode
+- **Docker**: all services have `restart: unless-stopped`, health checks, and resource limits
+
+---
+
+## Load Testing
+
+```bash
+make up
+make load-test   # 50 users, 60s, headless → tests/load_report.html
+```
