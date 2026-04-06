@@ -6,6 +6,7 @@ import styles from "./tool-call-feed.module.css";
 
 interface ToolCallFeedProps {
   calls: ToolCall[];
+  maxVisible?: number;
 }
 
 const STATUS_ICON: Record<ToolCall["status"], string> = {
@@ -15,52 +16,41 @@ const STATUS_ICON: Record<ToolCall["status"], string> = {
   timeout: "⏱",
 };
 
-export function ToolCallFeed({ calls }: ToolCallFeedProps) {
+export function ToolCallFeed({ calls, maxVisible = 25 }: ToolCallFeedProps) {
+  const visible = calls.slice(0, maxVisible);
+
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>Tool Calls</h2>
-        <div className={styles.legend}>
-          <span className={styles.legendItem} data-status="running">
-            <span className={styles.legendDot} /> Running
-          </span>
-          <span className={styles.legendItem} data-status="success">
-            <span className={styles.legendDot} /> Success
-          </span>
-          <span className={styles.legendItem} data-status="error">
-            <span className={styles.legendDot} /> Error
-          </span>
-        </div>
-      </div>
       <div className={styles.feed}>
-        {calls.map((call, i) => (
+        {visible.map((call, i) => (
           <div
             key={call.id}
             className={styles.item}
             data-status={call.status}
-            style={{ animationDelay: i === 0 ? "0ms" : undefined }}
           >
-            <div className={styles.statusIcon} data-status={call.status}>
-              {call.status === "running" ? (
-                <span className="animate-pulse">{STATUS_ICON[call.status]}</span>
-              ) : (
-                STATUS_ICON[call.status]
-              )}
-            </div>
+            <span className={styles.statusIcon} data-status={call.status}>
+              {call.status === "running"
+                ? <span className={styles.spinner}>◌</span>
+                : STATUS_ICON[call.status]
+              }
+            </span>
             <div className={styles.content}>
               <div className={styles.topRow}>
                 <span className={styles.toolName}>{call.toolName}</span>
                 <span className={styles.time}>{relativeTime(call.timestamp)}</span>
               </div>
               <div className={styles.bottomRow}>
-                <span className={styles.agentName}>{call.agentName}</span>
-                <span className={styles.divider}>·</span>
-                <span className={styles.workflowId}>{call.workflowId}</span>
-                {call.status !== "running" && (
+                <span className={styles.agentTag}>{call.agentName.replace("_", " ")}</span>
+                <span className={styles.sep}>·</span>
+                <span className={styles.wfId}>{call.workflowId}</span>
+                {call.status !== "running" && call.durationMs > 0 && (
                   <>
-                    <span className={styles.divider}>·</span>
+                    <span className={styles.sep}>·</span>
                     <span className={styles.duration}>{formatDuration(call.durationMs)}</span>
                   </>
+                )}
+                {call.errorMsg && (
+                  <span className={styles.errorMsg}>{call.errorMsg}</span>
                 )}
               </div>
             </div>

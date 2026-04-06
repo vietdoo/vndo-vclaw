@@ -6,6 +6,8 @@ import styles from "./event-stream.module.css";
 
 interface EventStreamProps {
   events: EventEntry[];
+  maxVisible?: number;
+  compact?: boolean;
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -18,6 +20,7 @@ const TYPE_COLORS: Record<string, string> = {
   "agent.failed": "red",
   "workflow.completed": "green",
   "workflow.failed": "red",
+  "agent.registered": "blue",
 };
 
 function getColor(type: string): string {
@@ -25,47 +28,45 @@ function getColor(type: string): string {
   return TYPE_COLORS[short] ?? "gray";
 }
 
-export function EventStream({ events }: EventStreamProps) {
+export function EventStream({ events, maxVisible = 30, compact }: EventStreamProps) {
+  const visible = events.slice(0, maxVisible);
+
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>Event Stream</h2>
-        <span className={styles.live}>
-          <span className={styles.liveDot} />
-          Live
-        </span>
-      </div>
-      <div className={styles.stream}>
-        {events.map((event, i) => (
-          <div
-            key={event.id}
-            className={styles.event}
-            style={i === 0 ? { animation: "slideInRight 0.2s ease-out" } : undefined}
-          >
-            <div className={styles.timeline}>
-              <span className={styles.dot} data-color={getColor(event.type)} />
-              {i < events.length - 1 && <span className={styles.line} />}
+    <div className={styles.stream}>
+      {visible.map((event) => (
+        <div key={event.id} className={`${styles.event} ${compact ? styles.compact : ""}`}>
+          <div className={styles.dotWrap}>
+            <span className={styles.dot} data-color={getColor(event.type)} />
+          </div>
+          <div className={styles.content}>
+            <div className={styles.topRow}>
+              <span className={styles.type} data-color={getColor(event.type)}>
+                {shortEventType(event.type)}
+              </span>
+              <span className={styles.time}>{relativeTime(event.timestamp)}</span>
             </div>
-            <div className={styles.content}>
-              <div className={styles.topRow}>
-                <span className={styles.type} data-color={getColor(event.type)}>
-                  {shortEventType(event.type)}
-                </span>
-                <span className={styles.time}>{relativeTime(event.timestamp)}</span>
-              </div>
+            {!compact && (
               <div className={styles.meta}>
-                <span className={styles.corId}>{event.correlationId}</span>
+                {event.workflowId && (
+                  <span className={styles.metaItem}>{event.workflowId}</span>
+                )}
                 {typeof event.data.agent === "string" && (
                   <>
                     <span className={styles.sep}>·</span>
-                    <span className={styles.agent}>{event.data.agent}</span>
+                    <span className={styles.metaItem}>{event.data.agent}</span>
+                  </>
+                )}
+                {event.tenantId && (
+                  <>
+                    <span className={styles.sep}>·</span>
+                    <span className={styles.metaItem}>{event.tenantId}</span>
                   </>
                 )}
               </div>
-            </div>
+            )}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }

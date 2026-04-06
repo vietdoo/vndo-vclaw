@@ -1,0 +1,286 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.body {
+  flex: 1;
+  padding: 20px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.levelStats {
+  display: flex;
+  gap: 8px;
+}
+
+.levelStat {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+  font-family: var(--font-sans);
+}
+
+.levelStat:hover {
+  background: var(--bg-card-hover);
+}
+
+.levelStatActive {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: var(--border-hover) !important;
+}
+
+.lsVal {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.lsLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.searchInput {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  padding: 5px 10px;
+  outline: none;
+  width: 200px;
+  transition: border-color var(--transition);
+  font-family: var(--font-sans);
+}
+
+.searchInput::placeholder {
+  color: var(--text-quaternary);
+}
+
+.searchInput:focus {
+  border-color: var(--border-focus);
+}
+
+.select {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  padding: 5px 8px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--transition);
+  font-family: var(--font-sans);
+  max-width: 160px;
+}
+
+.select:focus {
+  border-color: var(--border-focus);
+}
+
+.filterRow {
+  display: flex;
+  gap: 2px;
+}
+
+.filterBtn {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-tertiary);
+  transition: all var(--transition);
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+
+.filterBtn:hover {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.filterBtnActive {
+  color: var(--text-primary) !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: var(--border) !important;
+}
+
+.pauseBtn {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--accent-dim);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: var(--font-sans);
+  margin-left: auto;
+}
+
+.pauseBtn:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.pauseBtnActive {
+  border-color: var(--warning-border) !important;
+  color: var(--warning) !important;
+  background: var(--warning-bg) !important;
+}
+
+/* Log table */
+.logHeader {
+  display: grid;
+  grid-template-columns: 80px 60px 180px 1fr 100px;
+  gap: 8px;
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.logBody {
+  display: flex;
+  flex-direction: column;
+  max-height: 540px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+}
+
+.logRow {
+  display: grid;
+  grid-template-columns: 80px 60px 180px 1fr 100px;
+  gap: 8px;
+  padding: 6px 16px;
+  align-items: baseline;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background var(--transition);
+}
+
+.logRow:last-child {
+  border-bottom: none;
+}
+
+.logRow:first-child {
+  animation: fadeIn 0.15s ease-out;
+}
+
+.logRow:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.logRow[data-level="error"] {
+  background: rgba(255, 68, 68, 0.03);
+}
+
+.logRow[data-level="critical"] {
+  background: rgba(255, 0, 85, 0.05);
+}
+
+.logRow[data-level="warning"] {
+  background: rgba(245, 166, 35, 0.02);
+}
+
+.logTime {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.logLevel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.logSource {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logMessage {
+  font-size: var(--font-size-xs);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+}
+
+.logTrace {
+  font-size: 10px;
+  color: var(--text-quaternary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 32px;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 900px) {
+  .levelStats {
+    flex-wrap: wrap;
+  }
+  .levelStat {
+    min-width: calc(33.33% - 6px);
+  }
+  .logHeader {
+    grid-template-columns: 70px 50px 1fr;
+  }
+  .logRow {
+    grid-template-columns: 70px 50px 1fr;
+  }
+  .logSource,
+  .logTrace {
+    display: none;
+  }
+}

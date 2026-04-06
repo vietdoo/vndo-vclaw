@@ -1,0 +1,336 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.body {
+  flex: 1;
+  padding: 20px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.summaryRow {
+  display: flex;
+  gap: 10px;
+}
+
+.sumCard {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  transition: border-color var(--transition);
+}
+
+.sumCard:hover {
+  border-color: var(--border-hover);
+}
+
+.sumVal {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+.sumLbl {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 14px;
+  align-items: start;
+}
+
+.tablePanel {
+  min-width: 0;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.searchInput {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  padding: 5px 10px;
+  outline: none;
+  width: 200px;
+  transition: border-color var(--transition);
+  font-family: var(--font-sans);
+}
+
+.searchInput::placeholder { color: var(--text-quaternary); }
+.searchInput:focus { border-color: var(--border-focus); }
+
+.select {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  padding: 5px 8px;
+  outline: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  max-width: 150px;
+}
+
+.filterRow {
+  display: flex;
+  gap: 2px;
+}
+
+.filterBtn {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-tertiary);
+  transition: all var(--transition);
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+
+.filterBtn:hover {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.filterBtnActive {
+  color: var(--text-primary) !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: var(--border) !important;
+}
+
+/* Table */
+.tableHead {
+  display: grid;
+  grid-template-columns: 32px 1fr 130px 100px 80px 90px 70px 80px;
+  gap: 8px;
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.tableBody {
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.callRow {
+  display: grid;
+  grid-template-columns: 32px 1fr 130px 100px 80px 90px 70px 80px;
+  gap: 8px;
+  padding: 8px 16px;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background var(--transition);
+}
+
+.callRow:last-child {
+  border-bottom: none;
+}
+
+.callRow:first-child {
+  animation: fadeIn 0.15s ease-out;
+}
+
+.callRow:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.callRow[data-status="error"] {
+  background: rgba(255, 68, 68, 0.03);
+}
+
+.statusCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.statusIcon {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.toolCell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.toolName {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.callId {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-quaternary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agentCell {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wfCell {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+}
+
+.durCell {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.tokensCell {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tokenBadge {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  background: var(--accent-dim);
+  border-radius: var(--radius-xs);
+  padding: 1px 4px;
+}
+
+.timeCell {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.statusLabel {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.empty {
+  padding: 32px;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+/* Tool frequency chart */
+.toolFreq {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.freqRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.freqTool {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  width: 100px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.freqBarWrap {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.freqBar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width var(--transition-slow);
+}
+
+.freqCount {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  min-width: 24px;
+  text-align: right;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 1100px) {
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .summaryRow {
+    flex-wrap: wrap;
+  }
+  .sumCard {
+    min-width: calc(33.33% - 8px);
+  }
+}

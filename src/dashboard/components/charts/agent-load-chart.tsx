@@ -11,20 +11,20 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { AgentLoadPoint } from "@/lib/types";
-import styles from "./chart.module.css";
 
 interface AgentLoadChartProps {
   data: AgentLoadPoint[];
+  height?: number;
 }
 
 const AGENT_COLORS: Record<string, string> = {
-  task_management: "#fff",
-  public_service: "#0070f3",
+  task_management: "#0070f3",
+  public_service: "#3dd68c",
   document_processor: "#8b5cf6",
-  notification_hub: "#555",
+  notification_hub: "#f5a623",
 };
 
-export function AgentLoadChart({ data }: AgentLoadChartProps) {
+export function AgentLoadChart({ data, height = 160 }: AgentLoadChartProps) {
   const chartData = useMemo(() => data, [data]);
   const agents = useMemo(() => {
     if (!chartData.length) return [];
@@ -32,52 +32,46 @@ export function AgentLoadChart({ data }: AgentLoadChartProps) {
   }, [chartData]);
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h3 className={styles.title}>Agent Load</h3>
-        <span className={styles.subtitle}>concurrent tasks</span>
-      </div>
-      <div className={styles.chartWrap}>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-            <XAxis
-              dataKey="time"
-              tick={{ fill: "#555", fontSize: 10 }}
-              tickLine={false}
-              axisLine={{ stroke: "#222" }}
-              interval="preserveStartEnd"
-              minTickGap={40}
-            />
-            <YAxis
-              tick={{ fill: "#555", fontSize: 10 }}
-              tickLine={false}
-              axisLine={false}
-              width={40}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "#111",
-                border: "1px solid #333",
-                borderRadius: "6px",
-                fontSize: "12px",
-                color: "#ededed",
-              }}
-              labelStyle={{ color: "#888" }}
-            />
-            {agents.map((agent) => (
-              <Bar
-                key={agent}
-                dataKey={agent}
-                fill={AGENT_COLORS[agent] ?? "#444"}
-                radius={[2, 2, 0, 0]}
-                maxBarSize={12}
-                stackId="load"
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={chartData} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <XAxis
+          dataKey="time"
+          tick={{ fill: "#444", fontSize: 9 }}
+          tickLine={false}
+          axisLine={false}
+          interval="preserveStartEnd"
+          minTickGap={60}
+        />
+        <YAxis
+          tick={{ fill: "#444", fontSize: 9 }}
+          tickLine={false}
+          axisLine={false}
+          width={32}
+        />
+        <Tooltip
+          contentStyle={{
+            background: "#111",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: "6px",
+            fontSize: "11px",
+            color: "#ededed",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.6)",
+          }}
+          labelStyle={{ color: "#666", marginBottom: "4px" }}
+        />
+        {agents.map((agent) => (
+          <Bar
+            key={agent}
+            dataKey={agent}
+            fill={AGENT_COLORS[agent] ?? "#444"}
+            radius={[2, 2, 0, 0]}
+            maxBarSize={10}
+            stackId="load"
+            opacity={0.85}
+          />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
   );
 }

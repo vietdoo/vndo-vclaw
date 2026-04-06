@@ -9,10 +9,23 @@ interface MetricCardProps {
   suffix?: string;
   icon: React.ReactNode;
   trend?: "up" | "down" | "neutral";
-  color?: "default" | "success" | "error" | "warning";
+  trendValue?: string;
+  color?: "default" | "success" | "error" | "warning" | "info" | "purple";
+  description?: string;
+  mono?: boolean;
 }
 
-export function MetricCard({ label, value, suffix, icon, trend, color = "default" }: MetricCardProps) {
+export function MetricCard({
+  label,
+  value,
+  suffix,
+  icon,
+  trend,
+  trendValue,
+  color = "default",
+  description,
+  mono,
+}: MetricCardProps) {
   const valueRef = useRef<HTMLSpanElement>(null);
   const prevValue = useRef(value);
 
@@ -32,16 +45,18 @@ export function MetricCard({ label, value, suffix, icon, trend, color = "default
         <span className={styles.label}>{label}</span>
       </div>
       <div className={styles.valueRow}>
-        <span ref={valueRef} className={styles.value}>
+        <span ref={valueRef} className={`${styles.value} ${mono ? styles.mono : ""}`}>
           {value}
         </span>
         {suffix && <span className={styles.suffix}>{suffix}</span>}
         {trend && trend !== "neutral" && (
           <span className={styles.trend} data-trend={trend}>
             {trend === "up" ? "↑" : "↓"}
+            {trendValue && <span className={styles.trendVal}>{trendValue}</span>}
           </span>
         )}
       </div>
+      {description && <p className={styles.description}>{description}</p>}
     </div>
   );
 }
