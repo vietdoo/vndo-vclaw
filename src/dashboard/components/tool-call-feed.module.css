@@ -1,0 +1,166 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.legend {
+  display: flex;
+  gap: 12px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.legendDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.legendItem[data-status="running"] .legendDot {
+  background: var(--success);
+}
+
+.legendItem[data-status="success"] .legendDot {
+  background: var(--green);
+}
+
+.legendItem[data-status="error"] .legendDot {
+  background: var(--error);
+}
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  max-height: 480px;
+  padding-right: 4px;
+}
+
+.item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition);
+  border: 1px solid transparent;
+}
+
+.item:first-child {
+  animation: slideInRight 0.25s ease-out forwards;
+}
+
+.item:hover {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+
+.statusIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.statusIcon[data-status="running"] {
+  color: var(--success);
+}
+
+.statusIcon[data-status="success"] {
+  color: var(--green);
+}
+
+.statusIcon[data-status="error"] {
+  color: var(--error);
+}
+
+.statusIcon[data-status="timeout"] {
+  color: var(--warning);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.toolName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.bottomRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.agentName {
+  color: var(--text-secondary);
+}
+
+.divider {
+  color: var(--text-tertiary);
+}
+
+.workflowId {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.duration {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}

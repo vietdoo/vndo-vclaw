@@ -11,6 +11,7 @@ import uvicorn
 from vclaw.agents.builtin.public_service import PublicServiceAgent
 from vclaw.agents.builtin.task_management import TaskManagementAgent
 from vclaw.agents.registry import AgentRegistry
+from vclaw.api.dashboard import set_platform
 from vclaw.api.response_handler import ResponseHandler
 from vclaw.api.webhook import create_app, set_gateway, set_health_data
 from vclaw.application.orchestrator import Orchestrator
@@ -100,6 +101,7 @@ class VclawPlatform:
             await self.agent_registry.discover_directories(self.settings.agent_plugin_dirs)
 
         set_gateway(self.telegram_gateway)
+        set_platform(self)
         set_health_data(
             {
                 "agents": list(self.agent_registry.agents.keys()),

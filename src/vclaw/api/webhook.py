@@ -10,6 +10,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
+from vclaw.api.dashboard import dashboard_agents, dashboard_events, dashboard_metrics
 from vclaw.infrastructure.telegram.gateway import TelegramGateway
 
 logger: structlog.stdlib.BoundLogger = structlog.get_logger(__name__)
@@ -73,6 +74,9 @@ def create_app() -> Starlette:
         Route("/webhook/telegram", telegram_webhook, methods=["POST"]),
         Route("/health", health_check, methods=["GET"]),
         Route("/ready", readiness_check, methods=["GET"]),
+        Route("/api/dashboard/metrics", dashboard_metrics, methods=["GET"]),
+        Route("/api/dashboard/agents", dashboard_agents, methods=["GET"]),
+        Route("/api/dashboard/events", dashboard_events, methods=["GET"]),
     ]
 
     return Starlette(routes=routes)
