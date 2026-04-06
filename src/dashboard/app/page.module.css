@@ -1,0 +1,82 @@
+.root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  padding: 24px;
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.bottomGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  min-height: 0;
+}
+
+.agentPanel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.feedPanel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.eventPanel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 1200px) {
+  .metricsGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .chartsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bottomGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .eventPanel {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .metricsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .bottomGrid {
+    grid-template-columns: 1fr;
+  }
+}
