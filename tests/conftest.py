@@ -1,13 +1,67 @@
-"""Test fixtures with mocked external dependencies."""
-from unittest.mock import AsyncMock, MagicMock, patch
+"""Shared test fixtures for the Vclaw test suite (platform + monitoring API)."""
 
+from __future__ import annotations
+
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from unittest.mock import AsyncMock, MagicMock, patch
 
+from vclaw.agents.registry import AgentRegistry
+from vclaw.domain.events import CloudEvent
+from vclaw.domain.models import IncomingMessage, MessageSource
+from vclaw.infrastructure.event_bus.memory import InMemoryEventBus
+from vclaw.infrastructure.llm.router import LLMRouter
+from vclaw.infrastructure.persistence.state_store import InMemoryStateStore
+
+
+# ── Vclaw platform fixtures ───────────────────────────────────────────────────
+
+@pytest.fixture
+def event_bus() -> InMemoryEventBus:
+    return InMemoryEventBus()
+
+
+@pytest.fixture
+def state_store() -> InMemoryStateStore:
+    return InMemoryStateStore()
+
+
+@pytest.fixture
+def llm_router() -> LLMRouter:
+    return LLMRouter()
+
+
+@pytest.fixture
+def agent_registry(event_bus: InMemoryEventBus, llm_router: LLMRouter) -> AgentRegistry:
+    return AgentRegistry(event_bus=event_bus, llm_router=llm_router)
+
+
+@pytest.fixture
+def sample_message() -> IncomingMessage:
+    return IncomingMessage(
+        source=MessageSource.TELEGRAM,
+        chat_id="12345",
+        user_id="67890",
+        text="Tạo task cho team backend",
+    )
+
+
+@pytest.fixture
+def sample_event(sample_message: IncomingMessage) -> CloudEvent:
+    return CloudEvent(
+        type="vclaw.message.normalized",
+        source="vclaw.telegram",
+        data=sample_message.model_dump(mode="json"),
+        subject=sample_message.chat_id,
+    )
+
+
+# ── Monitoring API fixtures (FastAPI + mocked infra) ─────────────────────────
 
 @pytest_asyncio.fixture
-async def client():
-    """HTTP client with all external dependencies mocked."""
+async def api_client():
+    """HTTP client for the monitoring/logging FastAPI app with all external deps mocked."""
     mock_db = AsyncMock()
     mock_db.__aenter__ = AsyncMock(return_value=mock_db)
     mock_db.__aexit__ = AsyncMock(return_value=None)
@@ -33,3 +87,9 @@ async def client():
         from app.main import app
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             yield ac
+
+
+# Backward-compatible alias so existing tests using `client` still work
+@pytest_asyncio.fixture
+async def client(api_client: AsyncClient) -> AsyncClient:
+    return api_client
