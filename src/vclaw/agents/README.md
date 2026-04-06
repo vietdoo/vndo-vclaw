@@ -21,8 +21,11 @@ agents/
     ├── document_processing/
     │   ├── agent.py            # PDF, DOCX, XLSX read/create agent
     │   └── README.md
-    └── image_processing/
-        ├── agent.py            # Image read/analyze/create agent
+    ├── image_processing/
+    │   ├── agent.py            # Image read/analyze/create agent
+    │   └── README.md
+    └── audio_processing/
+        ├── agent.py            # Audio transcribe/convert/TTS agent
         └── README.md
 ```
 
@@ -237,6 +240,50 @@ pip install vclaw[images]
 
 ---
 
+### `AudioProcessingAgent` (`builtin/audio_processing/agent.py`)
+
+**Purpose:** Transcribe speech to text, extract audio metadata, convert between audio formats, and generate speech from text. Natively handles Telegram voice messages by auto-detecting `voice`/`audio` in `raw_payload` and transcribing via OpenAI Whisper.
+
+**Capabilities:** `audio_transcription`, `audio_metadata`, `audio_conversion`, `text_to_speech`
+
+**Dependencies (optional):**
+
+```bash
+pip install mutagen pydub
+# ffmpeg must be on PATH for format conversion
+apt install ffmpeg
+# or install the optional group:
+pip install vclaw[audio]
+```
+
+**Tools:**
+
+| Tool | Required params | Description |
+|------|----------------|-------------|
+| `transcribe_audio` | — | Transcribe speech via Whisper API. Accepts base64, file path, or Telegram file_id. |
+| `get_audio_info` | — | Extract metadata: duration, bitrate, sample rate, codec, tags. |
+| `convert_audio` | `output_format` | Convert between MP3, WAV, OGG, FLAC, AAC, M4A (pydub + ffmpeg). |
+| `text_to_speech` | `text` | Generate speech via OpenAI TTS API. Multiple voices available. |
+| `download_telegram_audio` | `file_id` | Download audio/voice from Telegram Bot API. |
+
+**Telegram voice auto-detection:** When `raw_payload` contains `message.voice` or `message.audio`, the agent automatically extracts `file_id`, downloads the file, and transcribes it — no LLM routing needed.
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `TELEGRAM_BOT_TOKEN` | — | Required for downloading Telegram files |
+| `OPENAI_API_KEY` | — | Required for Whisper and TTS |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible API base URL |
+| `VCLAW_WHISPER_MODEL` | `whisper-1` | Whisper model name |
+| `VCLAW_TTS_MODEL` | `tts-1` | TTS model name |
+| `VCLAW_TTS_VOICE` | `alloy` | Default TTS voice |
+| `VCLAW_AUDIO_OUTPUT_DIR` | system temp dir | Output directory for audio files |
+
+**Tests:** `tests/test_audio_processing_agent.py` (24 tests)
+
+---
+
 ## Creating a New Agent (Step-by-Step)
 
 ### Step 1: Create the agent module
@@ -318,4 +365,4 @@ assert resp.success
 print(resp.data)
 ```
 
-See `tests/test_builtin_agents.py`, `tests/test_agent_registry.py`, `tests/test_document_processing_agent.py`, and `tests/test_image_processing_agent.py` for full test examples.
+See `tests/test_builtin_agents.py`, `tests/test_agent_registry.py`, `tests/test_document_processing_agent.py`, `tests/test_image_processing_agent.py`, and `tests/test_audio_processing_agent.py` for full test examples.
