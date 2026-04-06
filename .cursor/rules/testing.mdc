@@ -1,0 +1,64 @@
+---
+description: Testing rules and patterns for the Vclaw project
+globs:
+  - "tests/**/*.py"
+alwaysApply: false
+---
+
+# Testing Rules
+
+## Framework & Config
+
+- **pytest** with **pytest-asyncio** (`asyncio_mode = "auto"`)
+- Test files: `tests/test_<module>.py`
+- Fixtures in `tests/conftest.py`
+- Run: `pytest tests/ -v` or `pytest tests/ -v --cov=vclaw`
+
+## Test Patterns
+
+### Unit Tests for Agents
+```python
+async def test_agent_execute():
+    agent = MyAgent()
+    request = AgentRequest(
+        workflow_id="wf-1", subtask_id="st-1",
+        agent_name=agent.name, input_data={"text": "input"},
+    )
+    response = await agent.execute(request)
+    assert response.success
+```
+
+### Event Bus Tests
+```python
+async def test_event_publish_subscribe():
+    bus = InMemoryEventBus()
+    await bus.start()
+    received = []
+    await bus.subscribe("test.event", lambda e: received.append(e))
+    await bus.publish(CloudEvent(type="test.event", data={"key": "value"}))
+    # Allow async dispatch
+    await asyncio.sleep(0.1)
+    assert len(received) == 1
+```
+
+### Mocking LLM
+- Never make real LLM API calls in tests
+- Mock `LLMRouter.complete()` to return controlled `LLMResponse`
+- Test both success and failure paths (LLM unavailable → fallback)
+
+## Fixtures (from conftest.py)
+
+- `event_bus` — `InMemoryEventBus` instance (started)
+- `state_store` — `InMemoryStateStore` instance
+- `agent_registry` — `AgentRegistry` with event bus
+- Always clean up: `await bus.stop()` in teardown
+
+## What to Test
+
+- Agent `execute()` with various inputs
+- Agent fallback behavior when LLM fails
+- Event bus publish/subscribe/DLQ routing
+- Orchestrator pipeline (intent → decompose → execute → aggregate)
+- Rate limiter allow/deny logic
+- Webhook signature verification
+- Model serialization/deserialization

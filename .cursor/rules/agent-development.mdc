@@ -1,0 +1,92 @@
+---
+description: Rules for developing new agents in the Vclaw platform
+globs:
+  - "src/vclaw/agents/**/*.py"
+  - "plugins/**/*.py"
+  - "examples/**/*.py"
+alwaysApply: false
+---
+
+# Agent Development Rules
+
+## Agent Structure
+
+Every agent MUST follow this structure:
+
+```python
+from __future__ import annotations
+from typing import Any, ClassVar
+from vclaw.agents.base import AgentBase
+from vclaw.domain.models import (
+    AgentCapability, AgentManifest, AgentRequest,
+    AgentResponse, ToolDefinition, RetryPolicy,
+)
+
+class MyAgent(AgentBase):
+    manifest: ClassVar[AgentManifest] = AgentManifest(
+        name="my_agent",           # unique snake_case identifier
+        version="0.1.0",           # semver
+        description="...",         # human-readable, used by LLM for routing
+        capabilities=[...],        # used for intent-based routing
+        tools=[...],               # MCP-compatible tool definitions
+        retry_policy=RetryPolicy(max_retries=2),
+        tags=["tag1", "tag2"],
+    )
+
+    async def execute(self, request: AgentRequest) -> AgentResponse:
+        ...
+```
+
+## Execution Contract
+
+- `execute()` receives `AgentRequest` with `input_data`, `workflow_id`, `subtask_id`, `context`, `tenant_id`
+- Must return `AgentResponse` — never raise exceptions from `execute()` (return `success=False` instead)
+- The `run()` wrapper in `AgentBase` handles timeout, concurrency, tracing automatically
+- Always include `response_text` key in `data` dict for user-facing output
+
+## LLM Tool Calling Pattern
+
+For agents that use LLM for intent parsing:
+
+1. Build `LLMRequest` with system prompt + user text + `self.get_tool_schemas()`
+2. Call `self.call_llm(llm_request)` (uses shared `LLMRouter`)
+3. If `llm_response.tool_calls` exists, parse and dispatch tool calls
+4. Tool arguments come as JSON string in `function.arguments` — always handle `json.JSONDecodeError`
+5. Implement `_fallback_execution()` for when LLM is unavailable
+
+## Registration
+
+Three ways to register an agent (in discovery priority order):
+
+1. **Entry point** — `pyproject.toml`: `[project.entry-points."vclaw.agents"]`
+2. **Directory plugin** — Place in `plugins/` directory (auto-scanned on startup)
+3. **Manual** — `await registry.register(MyAgent())`
+
+## Naming Conventions
+
+- Agent name: `snake_case`, globally unique (e.g., `task_management`, `browser_automation`)
+- Capability names: `snake_case`, descriptive (e.g., `web_scraping`, `form_filling`)
+- Tool names: `snake_case`, verb-first (e.g., `fetch_page`, `click_element`)
+- Tags: lowercase, descriptive (e.g., `"browser"`, `"automation"`, `"scraping"`)
+
+## Testing Agents
+
+```python
+import pytest
+from vclaw.domain.models import AgentRequest
+
+@pytest.fixture
+def agent():
+    agent = MyAgent()
+    # Don't call setup() unless testing lifecycle
+    return agent
+
+async def test_execute(agent):
+    request = AgentRequest(
+        workflow_id="test-wf", subtask_id="test-st",
+        agent_name=agent.name, input_data={"text": "test input"},
+    )
+    response = await agent.execute(request)
+    assert response.success
+    assert "response_text" in response.data
+```

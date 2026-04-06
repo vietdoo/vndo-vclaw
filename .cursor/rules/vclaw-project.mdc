@@ -1,0 +1,93 @@
+---
+description: Core project rules for Vclaw AI Agent Orchestration Platform
+globs:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+  - "examples/**/*.py"
+  - "plugins/**/*.py"
+alwaysApply: true
+---
+
+# Vclaw Project Rules
+
+## Project Overview
+
+Vclaw is a Python 3.11+ AI agent orchestration platform that routes Telegram commands to specialized, pluggable AI agents via a centralized orchestrator. It uses an event-driven architecture with CloudEvents, async event bus (InMemory/Redis Streams), LLM-powered intent classification, and a plugin-based agent system.
+
+## Architecture (Clean Architecture / Hexagonal)
+
+- **`domain/`** — Pure models and events. NO infrastructure imports. Only depends on pydantic + stdlib.
+- **`application/`** — Use cases (orchestrator). Depends on domain + abstract interfaces only.
+- **`infrastructure/`** — External integrations (event bus, LLM, Telegram, persistence, observability). Implements abstract interfaces from domain/application.
+- **`agents/`** — Pluggable agent subsystem. Each agent subclasses `AgentBase` and declares a `ClassVar[AgentManifest]`.
+- **`api/`** — HTTP layer (Starlette). Thin wrapper over infrastructure.
+
+**Dependency rule:** domain ← application ← infrastructure/agents/api. Never import upward.
+
+## Tech Stack
+
+- **Python 3.11+**, **Hatchling** build system
+- **Pydantic v2** + **pydantic-settings** for models/config
+- **Starlette** + **Uvicorn** for ASGI HTTP
+- **httpx** for async HTTP clients (LLM, Telegram)
+- **structlog** for structured logging, **OpenTelemetry** for tracing
+- **redis** (Streams) for production event bus, **nats-py** planned
+- **tenacity** for retry logic, **python-ulid** for time-sortable IDs
+- **ruff** for linting, **mypy --strict** for type checking, **pytest-asyncio** for tests
+
+## Code Style & Quality
+
+- Line length: 100 chars (ruff)
+- Ruff lint rules: E, F, W, I, N, UP, B, SIM
+- mypy strict mode — all functions must have type annotations
+- Use `from __future__ import annotations` in every module
+- Async-first: all I/O operations must be `async`
+- All modules must have a docstring explaining their purpose
+- Follow SOLID and DRY principles
+- Prefer simple solutions — avoid over-engineering
+
+## Agent Development Patterns
+
+When creating or modifying agents:
+
+1. **Always subclass `AgentBase`** from `vclaw.agents.base`
+2. **Declare `manifest: ClassVar[AgentManifest]`** with: name, version, description, capabilities, tools, retry_policy, tags
+3. **Implement `async def execute(self, request: AgentRequest) -> AgentResponse`**
+4. **Use `self.call_llm()`** for LLM interactions — never instantiate LLM clients directly
+5. **Use `self.get_tool_schemas()`** to get OpenAI-compatible tool schemas from manifest
+6. **Always implement fallback logic** when LLM is unavailable (keyword matching, defaults)
+7. **Return structured data** in `AgentResponse.data` with `response_text` key for user-facing output
+8. **Register via entry points** in `pyproject.toml` under `[project.entry-points."vclaw.agents"]`
+
+## Event Bus Patterns
+
+- All events are `CloudEvent` with `type`, `data`, `correlation_id`, `tenant_id`
+- Use `EventTypes.*` constants from `vclaw.domain.events` — never hardcode event type strings
+- Always propagate `correlation_id` (= workflow ID) and `tenant_id` through events
+- Handlers must be `async` callables accepting `CloudEvent`
+
+## Configuration
+
+- All settings via env vars with `VCLAW_` prefix (see `src/vclaw/config.py`)
+- Telegram settings: `TELEGRAM_` prefix
+- Redis settings: `REDIS_` prefix
+- Use `VclawSettings` for all config — never read env vars directly
+
+## Testing
+
+- Tests in `tests/` with `pytest-asyncio` (asyncio_mode = "auto")
+- Use `InMemoryEventBus` and `InMemoryStateStore` for tests
+- Mock LLM calls — never make real API calls in tests
+- Test file naming: `test_<module>.py`
+
+## ID Generation
+
+- Use `python-ulid` for all IDs (time-sortable, lexicographically ordered)
+- Idempotency keys: `source:chat_id:message_id` format
+
+## Error Handling
+
+- Agents: exceptions are caught by `AgentBase.run()` and returned as `AgentResponse(success=False)`
+- Orchestrator: exceptions transition workflow to `FAILED` and publish `WORKFLOW_FAILED`
+- Event bus: failed handler invocations are routed to DLQ
+- LLM router: failed providers are marked unhealthy and skipped in subsequent calls

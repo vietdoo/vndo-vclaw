@@ -1,0 +1,55 @@
+---
+description: Rules for infrastructure layer code (event bus, LLM, persistence, Telegram)
+globs:
+  - "src/vclaw/infrastructure/**/*.py"
+alwaysApply: false
+---
+
+# Infrastructure Layer Rules
+
+## Event Bus
+
+- Always implement the `EventBus` abstract class from `infrastructure/event_bus/base.py`
+- Required methods: `publish()`, `subscribe()`, `unsubscribe()`, `start()`, `stop()`, `publish_to_dlq()`
+- Use `CloudEvent` from `vclaw.domain.events` — never create custom event formats
+- All handlers must be `async def handler(event: CloudEvent) -> None`
+- DLQ: failed events MUST be routed to dead-letter queue, not silently dropped
+- Backpressure: use `asyncio.Semaphore` to limit concurrent handler execution
+
+## LLM Providers
+
+- Always implement `LLMProvider` from `infrastructure/llm/base.py`
+- Use `httpx.AsyncClient` for HTTP — never use `requests` or `aiohttp`
+- Reuse HTTP clients (connection pooling) — create once, close on shutdown
+- Handle `httpx.HTTPStatusError` and `httpx.TimeoutException` explicitly
+- Return `LLMResponse` with usage stats and cost estimates
+- The `LLMRouter` handles fallback — individual providers should raise on failure
+
+## Persistence
+
+- Always implement `StateStore` from `infrastructure/persistence/state_store.py`
+- Use `asyncio.Lock` for thread safety in in-memory implementations
+- Idempotency keys must be checked atomically (check + mark in same lock scope for production)
+- `list_active()` filters out terminal states: completed, failed, timed_out, cancelled
+
+## Telegram
+
+- Use `httpx.AsyncClient` for Telegram API calls
+- Webhook signature verification: HMAC-SHA256 with `X-Telegram-Bot-Api-Secret-Token`
+- Markdown fallback: if `parse_mode="Markdown"` fails (422), retry with `parse_mode=""`
+- Rate limiting: sliding window per `chat_id`, configurable via `TelegramConfig`
+
+## Observability
+
+- Use `structlog` for all logging — never use `print()` or bare `logging`
+- Use `structlog.get_logger(__name__)` at module level
+- Include structured context: `workflow_id`, `agent_name`, `tenant_id`, `chat_id`
+- OpenTelemetry spans: use `tracer.start_as_current_span()` for key operations
+- Never log secrets (API keys, tokens) — use `SecretStr` from pydantic
+
+## Configuration
+
+- All config via `pydantic-settings` in `vclaw.config`
+- Env var prefixes: `VCLAW_`, `TELEGRAM_`, `REDIS_`, `NATS_`
+- Secrets use `pydantic.SecretStr` — access via `.get_secret_value()`
+- Default to development-safe values (in-memory bus, no external deps)
