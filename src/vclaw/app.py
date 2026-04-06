@@ -8,6 +8,7 @@ import signal
 import structlog
 import uvicorn
 
+from vclaw.agents.builtin.audio_processing import AudioProcessingAgent
 from vclaw.agents.builtin.document_processing import DocumentProcessingAgent
 from vclaw.agents.builtin.image_processing import ImageProcessingAgent
 from vclaw.agents.builtin.public_service import PublicServiceAgent
@@ -128,6 +129,7 @@ class VclawPlatform:
             PublicServiceAgent(),
             DocumentProcessingAgent(),
             ImageProcessingAgent(),
+            AudioProcessingAgent(),
         ]
         for agent in builtins:
             await self.agent_registry.register(agent)

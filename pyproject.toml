@@ -36,8 +36,12 @@ documents = [
 images = [
     "Pillow>=10.2,<11",
 ]
+audio = [
+    "mutagen>=1.47,<2",
+    "pydub>=0.25,<1",
+]
 all = [
-    "vclaw[documents,images]",
+    "vclaw[documents,images,audio]",
 ]
 dev = [
     "pytest>=8.0",
@@ -53,6 +57,7 @@ public_service = "vclaw.agents.builtin.public_service:PublicServiceAgent"
 browser = "vclaw.agents.builtin.browser:BrowserAgent"
 document_processing = "vclaw.agents.builtin.document_processing:DocumentProcessingAgent"
 image_processing = "vclaw.agents.builtin.image_processing:ImageProcessingAgent"
+audio_processing = "vclaw.agents.builtin.audio_processing:AudioProcessingAgent"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
