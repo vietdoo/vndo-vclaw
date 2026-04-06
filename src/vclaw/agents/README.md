@@ -9,11 +9,21 @@ agents/
 ├── base.py                     # AgentBase abstract class
 ├── registry.py                 # AgentRegistry: discovery + lifecycle
 ├── __init__.py
+├── README.md                   # This file
 └── builtin/
     ├── task_management/
     │   └── agent.py            # Kanban task board agent
-    └── public_service/
-        └── agent.py            # Vietnamese government services agent
+    ├── public_service/
+    │   └── agent.py            # Vietnamese government services agent
+    ├── browser/
+    │   ├── agent.py            # Web browsing and scraping agent
+    │   └── README.md
+    ├── document_processing/
+    │   ├── agent.py            # PDF, DOCX, XLSX read/create agent
+    │   └── README.md
+    └── image_processing/
+        ├── agent.py            # Image read/analyze/create agent
+        └── README.md
 ```
 
 ---
@@ -143,6 +153,90 @@ await registry.register(MyAgent())
 
 ---
 
+### `DocumentProcessingAgent` (`builtin/document_processing/agent.py`)
+
+**Purpose:** Read text from and create PDF, DOCX (Word), and XLSX (Excel) files. Files are transported via base64 encoding over the event bus.
+
+**Capabilities:** `document_reading`, `document_creation`, `document_info`
+
+**Dependencies (optional):**
+
+```bash
+pip install pypdf python-docx openpyxl reportlab
+# or install the optional group:
+pip install vclaw[documents]
+```
+
+Each library is imported lazily — the agent gracefully degrades and returns clear error messages when a library is missing for a specific operation.
+
+**Tools:**
+
+| Tool | Required params | Description |
+|------|----------------|-------------|
+| `read_pdf` | — | Extract text from a PDF file (base64 or path). Optionally read specific pages. |
+| `read_docx` | — | Extract paragraphs and tables from a DOCX file. |
+| `read_xlsx` | — | Read headers and data rows from an XLSX spreadsheet. |
+| `create_pdf` | `content` | Create a new PDF with title and text content (reportlab). |
+| `create_docx` | `content` | Create a DOCX with optional heading/section structure. |
+| `create_xlsx` | `headers`, `rows` | Create an XLSX with column headers and data rows. |
+| `get_document_info` | `file_type` | Get metadata: page count, sheet names, author, etc. |
+
+**File input/output:** All tools accept `file_base64` (base64-encoded content) or `file_path` (disk path). Creation tools output both a disk file and `file_base64` in the response for downstream transport.
+
+**Direct dispatch:** When `file_base64` or `file_path` is provided in `input_data`, the agent auto-detects file type and reads it without requiring LLM routing.
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `VCLAW_DOCUMENT_OUTPUT_DIR` | system temp dir | Directory for created files |
+
+**Tests:** `tests/test_document_processing_agent.py` (20 tests)
+
+---
+
+### `ImageProcessingAgent` (`builtin/image_processing/agent.py`)
+
+**Purpose:** Read metadata, analyze content (via LLM vision), resize, crop, rotate, convert formats, and create simple images with text.
+
+**Capabilities:** `image_reading`, `image_analysis`, `image_manipulation`, `image_creation`
+
+**Dependencies (optional):**
+
+```bash
+pip install Pillow
+# or install the optional group:
+pip install vclaw[images]
+```
+
+**Tools:**
+
+| Tool | Required params | Description |
+|------|----------------|-------------|
+| `get_image_info` | — | Dimensions, format, color mode, EXIF metadata |
+| `analyze_image` | — | LLM vision analysis — describe image, answer questions, OCR-like text extraction |
+| `resize_image` | `width`, `height` | Resize with optional aspect ratio preservation |
+| `crop_image` | `left`, `top`, `right`, `bottom` | Crop a rectangular region |
+| `rotate_image` | `degrees` | Rotate counter-clockwise with optional canvas expansion |
+| `convert_format` | `output_format` | Convert between PNG, JPEG, GIF, BMP, TIFF, WebP |
+| `create_image` | — | Create solid-color image with optional centered text overlay |
+
+**Supported formats:** PNG, JPEG, GIF, BMP, TIFF, WebP, ICO (read-only)
+
+**LLM Vision:** `analyze_image` sends the image as a base64 data URL to a multimodal LLM (OpenAI GPT-4V compatible). Falls back to basic metadata if vision is unavailable.
+
+**Direct dispatch:** When a file is provided without text instructions, the agent automatically returns image metadata.
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `VCLAW_IMAGE_OUTPUT_DIR` | system temp dir | Directory for created/modified images |
+
+**Tests:** `tests/test_image_processing_agent.py` (18 tests)
+
+---
+
 ## Creating a New Agent (Step-by-Step)
 
 ### Step 1: Create the agent module
@@ -224,4 +318,4 @@ assert resp.success
 print(resp.data)
 ```
 
-See `tests/test_builtin_agents.py` and `tests/test_agent_registry.py` for full test examples.
+See `tests/test_builtin_agents.py`, `tests/test_agent_registry.py`, `tests/test_document_processing_agent.py`, and `tests/test_image_processing_agent.py` for full test examples.
