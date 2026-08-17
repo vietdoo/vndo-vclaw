@@ -7,7 +7,7 @@ in the plugins/ directory.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from vclaw.agents.base import AgentBase
 from vclaw.domain.models import (

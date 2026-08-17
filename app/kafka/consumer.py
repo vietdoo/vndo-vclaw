@@ -1,7 +1,7 @@
 import asyncio
 import json
 import time
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 from aiokafka import AIOKafkaConsumer
 from aiokafka.errors import KafkaConnectionError

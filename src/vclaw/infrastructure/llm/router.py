@@ -89,13 +89,23 @@ class LLMRouter:
         raise RuntimeError(f"All LLM providers failed. Last error: {last_error}") from last_error
 
     async def health_check_all(self) -> dict[str, bool]:
-        """Run health checks on all providers and update status."""
-        results: dict[str, bool] = {}
-        for provider in self._providers:
-            healthy = await provider.health_check()
-            async with self._lock:
-                self._health[provider.name] = healthy
-            results[provider.name] = healthy
+        """Run health checks on all providers and update status concurrently."""
+
+        async def _check_provider(provider: LLMProvider) -> tuple[str, bool]:
+            try:
+                healthy = await provider.health_check()
+                return provider.name, healthy
+            except Exception:
+                logger.exception("provider_health_check_failed", provider=provider.name)
+                return provider.name, False
+
+        tasks = [_check_provider(provider) for provider in self._providers]
+        results_list = await asyncio.gather(*tasks)
+
+        results: dict[str, bool] = dict(results_list)
+        async with self._lock:
+            self._health.update(results)
+
         return results
 
     async def reset_provider(self, name: str) -> None:

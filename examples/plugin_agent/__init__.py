@@ -5,8 +5,7 @@ without modifying any core code. Drop this folder into the `plugins/`
 directory and it will be auto-discovered on startup.
 """
 
-from vclaw.agents.builtin.task_management.agent import TaskManagementAgent  # noqa: just for reference
-
 from examples.plugin_agent.agent import WeatherAgent
+from vclaw.agents.builtin.task_management.agent import TaskManagementAgent  # noqa: just for reference
 
 __all__ = ["WeatherAgent"]

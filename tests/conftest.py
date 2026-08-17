@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from vclaw.agents.registry import AgentRegistry
 from vclaw.domain.events import CloudEvent
@@ -13,7 +14,6 @@ from vclaw.domain.models import IncomingMessage, MessageSource
 from vclaw.infrastructure.event_bus.memory import InMemoryEventBus
 from vclaw.infrastructure.llm.router import LLMRouter
 from vclaw.infrastructure.persistence.state_store import InMemoryStateStore
-
 
 # ── Vclaw platform fixtures ───────────────────────────────────────────────────
 

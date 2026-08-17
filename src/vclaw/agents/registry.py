@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import inspect
 import sys
@@ -173,15 +174,18 @@ class AgentRegistry:
         return count
 
     async def health_check_all(self) -> dict[str, bool]:
-        """Run health checks on all registered agents."""
-        results: dict[str, bool] = {}
-        for name, agent in self._agents.items():
+        """Run health checks on all registered agents concurrently."""
+
+        async def _check_agent(name: str, agent: AgentBase) -> tuple[str, bool]:
             try:
-                results[name] = await agent.health_check()
+                return name, await agent.health_check()
             except Exception:
-                results[name] = False
                 logger.exception("health_check_failed", agent=name)
-        return results
+                return name, False
+
+        tasks = [_check_agent(name, agent) for name, agent in self._agents.items()]
+        results_list = await asyncio.gather(*tasks)
+        return dict(results_list)
 
     async def shutdown(self) -> None:
         """Gracefully teardown all agents."""
